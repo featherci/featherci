@@ -145,13 +145,21 @@ func New(
 	}
 }
 
+// SetID sets a fixed worker ID, overriding the default random generation.
+// Must be called before Start.
+func (w *Worker) SetID(id string) {
+	w.id = id
+}
+
 // Start begins the worker poll loop and heartbeat. It blocks until ctx is cancelled.
 func (w *Worker) Start(ctx context.Context) error {
-	id, err := w.generateID()
-	if err != nil {
-		return fmt.Errorf("generating worker ID: %w", err)
+	if w.id == "" {
+		id, err := w.generateID()
+		if err != nil {
+			return fmt.Errorf("generating worker ID: %w", err)
+		}
+		w.id = id
 	}
-	w.id = id
 
 	// Register in DB
 	worker := &models.Worker{

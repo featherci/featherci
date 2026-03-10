@@ -43,6 +43,7 @@ type Server struct {
 	webhookHandler *handlers.WebhookHandler
 	buildHandler   *handlers.BuildHandler
 	secretHandler  *handlers.SecretHandler
+	adminHandler   *handlers.AdminHandler
 	authMiddleware *middleware.AuthMiddleware
 }
 
@@ -65,6 +66,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	projectUsers := models.NewProjectUserRepository(db.DB)
 	builds := models.NewBuildRepository(db.DB)
 	steps := models.NewBuildStepRepository(db.DB)
+	workers := models.NewWorkerRepository(db.DB)
 
 	// Initialize OAuth providers
 	providers := auth.NewRegistry(cfg)
@@ -98,6 +100,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	webhookHandler := handlers.NewWebhookHandler(projects, logger, buildCreator, fileFetcher, tokenSource, parser, statusService)
 	buildHandler := handlers.NewBuildHandler(projects, builds, steps, projectUsers, tmpl, logger)
 	secretHandler := handlers.NewSecretHandler(secretService, projects, projectUsers, tmpl, logger)
+	adminHandler := handlers.NewAdminHandler(users, projects, builds, workers, tmpl, logger)
 
 	return &Server{
 		config:         cfg,
@@ -115,6 +118,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 		webhookHandler: webhookHandler,
 		buildHandler:   buildHandler,
 		secretHandler:  secretHandler,
+		adminHandler:   adminHandler,
 		authMiddleware: authMiddleware,
 	}, nil
 }

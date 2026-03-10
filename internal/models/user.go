@@ -37,6 +37,7 @@ type UserRepository interface {
 	UpdateTokens(ctx context.Context, id int64, accessToken, refreshToken string) error
 	List(ctx context.Context) ([]*User, error)
 	Delete(ctx context.Context, id int64) error
+	GetByUsername(ctx context.Context, provider, username string) (*User, error)
 }
 
 // SQLiteUserRepository implements UserRepository using SQLite.
@@ -169,6 +170,20 @@ func (r *SQLiteUserRepository) List(ctx context.Context) ([]*User, error) {
 	}
 
 	return users, nil
+}
+
+// GetByUsername retrieves a user by their provider and username.
+func (r *SQLiteUserRepository) GetByUsername(ctx context.Context, provider, username string) (*User, error) {
+	var user User
+	query := `SELECT * FROM users WHERE provider = ? AND username = ?`
+	err := r.db.GetContext(ctx, &user, query, provider, username)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 // Delete removes a user from the database.

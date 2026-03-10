@@ -118,6 +118,7 @@ type BuildRepository interface {
 	SetFinished(ctx context.Context, id int64, status BuildStatus) error
 	CancelBuild(ctx context.Context, id int64) error
 	CountByProject(ctx context.Context, projectID int64) (int, error)
+	Count(ctx context.Context) (int, error)
 }
 
 // SQLiteBuildRepository implements BuildRepository using SQLite.
@@ -336,6 +337,14 @@ func (r *SQLiteBuildRepository) CountByProject(ctx context.Context, projectID in
 	var count int
 	query := `SELECT COUNT(*) FROM builds WHERE project_id = ?`
 	err := r.db.GetContext(ctx, &count, query, projectID)
+	return count, err
+}
+
+// Count returns the total number of builds across all projects.
+func (r *SQLiteBuildRepository) Count(ctx context.Context) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM builds`
+	err := r.db.GetContext(ctx, &count, query)
 	return count, err
 }
 

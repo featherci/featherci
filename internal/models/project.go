@@ -50,6 +50,7 @@ type ProjectRepository interface {
 	ListWithStatus(ctx context.Context) ([]*ProjectWithStatus, error)
 	Update(ctx context.Context, project *Project) error
 	Delete(ctx context.Context, id int64) error
+	CountAll(ctx context.Context) (int, error)
 }
 
 // ProjectUserRepository defines the interface for project-user association operations.
@@ -178,6 +179,14 @@ func (r *SQLiteProjectRepository) ListWithStatus(ctx context.Context) ([]*Projec
 		return nil, err
 	}
 	return projects, nil
+}
+
+// CountAll returns the total number of projects.
+func (r *SQLiteProjectRepository) CountAll(ctx context.Context) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM projects`
+	err := r.db.GetContext(ctx, &count, query)
+	return count, err
 }
 
 // Update updates an existing project.

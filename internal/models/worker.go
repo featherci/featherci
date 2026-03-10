@@ -33,6 +33,9 @@ type WorkerRepository interface {
 	UpdateStatus(ctx context.Context, id string, status WorkerStatus, currentStepID *int64) error
 	SetOffline(ctx context.Context, id string) error
 	ListStale(ctx context.Context, threshold time.Duration) ([]*Worker, error)
+	List(ctx context.Context) ([]*Worker, error)
+	CountActive(ctx context.Context) (int, error)
+	PurgeOffline(ctx context.Context, olderThan time.Duration) (int64, error)
 }
 
 // SQLiteWorkerRepository implements WorkerRepository using SQLite.
@@ -77,6 +80,35 @@ func (r *SQLiteWorkerRepository) SetOffline(ctx context.Context, id string) erro
 	query := `UPDATE workers SET status = 'offline', current_step_id = NULL WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, id)
 	return err
+}
+
+// List returns all workers.
+func (r *SQLiteWorkerRepository) List(ctx context.Context) ([]*Worker, error) {
+	var workers []*Worker
+	query := `SELECT * FROM workers ORDER BY name ASC`
+	if err := r.db.SelectContext(ctx, &workers, query); err != nil {
+		return nil, err
+	}
+	return workers, nil
+}
+
+// CountActive returns the number of non-offline workers.
+func (r *SQLiteWorkerRepository) CountActive(ctx context.Context) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM workers WHERE status != 'offline'`
+	err := r.db.GetContext(ctx, &count, query)
+	return count, err
+}
+
+// PurgeOffline deletes offline workers whose last heartbeat is older than the given duration.
+func (r *SQLiteWorkerRepository) PurgeOffline(ctx context.Context, olderThan time.Duration) (int64, error) {
+	cutoff := time.Now().Add(-olderThan)
+	query := `DELETE FROM workers WHERE status = 'offline' AND (last_heartbeat IS NULL OR last_heartbeat < ?)`
+	result, err := r.db.ExecContext(ctx, query, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 // ListStale returns workers whose last heartbeat is older than the threshold.

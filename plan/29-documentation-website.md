@@ -418,15 +418,7 @@ Repository Settings:
 | `approval-step.png` | `docs/static/images/` | Step waiting for approval with button |
 | `worker-status.png` | `docs/static/images/` | Admin view of connected workers |
 
-### 28.10 Create Simple Logo
-`docs/static/images/logo.svg`:
-```svg
-<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="45" fill="#0ea5e9"/>
-  <path d="M30 50 L45 65 L70 35" stroke="white" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-</svg>
-```
-
+### 28.10 Use Existing Logo
 ## Deliverables
 - [ ] `docs/` directory with Hugo site structure
 - [ ] `docs/config.toml` - Hugo configuration
@@ -448,8 +440,8 @@ Repository Settings:
 5. Site will be available at `https://featherci.github.io/`
 
 For custom domain:
-1. Add `CNAME` file to `docs/static/` with your domain
-2. Configure DNS with your domain provider
+1. Add `CNAME` file containing `featherci.dev` to `docs/static/` 
+2. Configure DNS with your domain provider (describe how)
 3. Enable "Enforce HTTPS" in GitHub Pages settings
 
 ## Dependencies

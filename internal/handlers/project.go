@@ -473,8 +473,12 @@ func (h *ProjectHandler) Settings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Build webhook URL from config
-	webhookURL := fmt.Sprintf("/webhooks/%s", project.Provider)
+	// Build webhook URL from the current request
+	scheme := "http"
+	if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+		scheme = "https"
+	}
+	webhookURL := fmt.Sprintf("%s://%s/webhooks/%s", scheme, r.Host, project.Provider)
 
 	// Count secrets for display
 	var secretCount int

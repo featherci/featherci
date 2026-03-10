@@ -19,6 +19,7 @@
                     <div>
                         <p class="text-sm font-medium text-gray-900">{{.Name}}</p>
                         {{if .Image}}<p class="text-xs text-gray-500">{{deref .Image}}</p>{{end}}
+                        {{if .ConditionExpr}}<p class="text-xs text-indigo-500">if: {{.ConditionExpr}}</p>{{end}}
                         {{if .ApprovedBy}}<p class="text-xs text-green-600">Approved by {{if .ApprovedByUser}}{{.ApprovedByUser.Username}}{{else}}user #{{derefInt64 .ApprovedBy}}{{end}}</p>{{end}}
                     </div>
                 </div>

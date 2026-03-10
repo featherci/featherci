@@ -641,9 +641,9 @@ func TestMatchGlob(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.pattern+"_"+tt.value, func(t *testing.T) {
-			got := matchGlob(tt.pattern, tt.value)
+			got := MatchGlob(tt.pattern, tt.value)
 			if got != tt.want {
-				t.Errorf("matchGlob(%q, %q) = %v, want %v", tt.pattern, tt.value, got, tt.want)
+				t.Errorf("MatchGlob(%q, %q) = %v, want %v", tt.pattern, tt.value, got, tt.want)
 			}
 		})
 	}

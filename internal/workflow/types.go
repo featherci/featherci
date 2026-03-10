@@ -119,6 +119,10 @@ type Step struct {
 	// Defaults to 60 minutes.
 	TimeoutMinutes int `yaml:"timeout_minutes"`
 
+	// If is a condition expression that determines whether this step should run.
+	// Syntax: variable operator "value" (e.g., branch == "main", branch =~ "release/*")
+	If string `yaml:"if"`
+
 	// ContinueOnError allows the workflow to continue even if this step fails.
 	ContinueOnError bool `yaml:"continue_on_error"`
 

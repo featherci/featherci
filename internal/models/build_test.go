@@ -75,7 +75,8 @@ func setupBuildTestDB(t *testing.T) *sqlx.DB {
 			depends_on_json TEXT DEFAULT '[]',
 			cache_json TEXT DEFAULT '',
 			working_dir TEXT DEFAULT '',
-			timeout_minutes INTEGER DEFAULT 60
+			timeout_minutes INTEGER DEFAULT 60,
+			condition_expr TEXT DEFAULT ''
 		);
 
 		CREATE TABLE step_dependencies (

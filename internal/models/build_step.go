@@ -50,6 +50,9 @@ type BuildStep struct {
 	ApprovedBy       *int64     `db:"approved_by"`
 	ApprovedAt       *time.Time `db:"approved_at"`
 
+	// ConditionExpr is the original if: expression from the workflow, for display.
+	ConditionExpr string `db:"condition_expr"`
+
 	// JSON-serialized fields stored in the database
 	CommandsJSON   string `db:"commands_json"`
 	EnvJSON        string `db:"env_json"`
@@ -217,8 +220,8 @@ func (r *SQLiteBuildStepRepository) Create(ctx context.Context, step *BuildStep)
 	}
 
 	query := `
-		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, working_dir, timeout_minutes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, working_dir, timeout_minutes, condition_expr)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	result, err := r.db.ExecContext(ctx, query,
 		step.BuildID,
@@ -232,6 +235,7 @@ func (r *SQLiteBuildStepRepository) Create(ctx context.Context, step *BuildStep)
 		step.CacheJSON,
 		step.WorkingDir,
 		step.TimeoutMinutes,
+		step.ConditionExpr,
 	)
 	if err != nil {
 		return err
@@ -255,8 +259,8 @@ func (r *SQLiteBuildStepRepository) CreateBatch(ctx context.Context, steps []*Bu
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, working_dir, timeout_minutes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, working_dir, timeout_minutes, condition_expr)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	stmt, err := tx.PreparexContext(ctx, query)
 	if err != nil {
@@ -281,6 +285,7 @@ func (r *SQLiteBuildStepRepository) CreateBatch(ctx context.Context, steps []*Bu
 			step.CacheJSON,
 			step.WorkingDir,
 			step.TimeoutMinutes,
+			step.ConditionExpr,
 		)
 		if err != nil {
 			return err

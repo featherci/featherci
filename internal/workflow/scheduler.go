@@ -158,7 +158,7 @@ func (w *Workflow) shouldTriggerOnPush(branch, tag string) bool {
 			return true
 		}
 		for _, pattern := range w.On.Push.Tags {
-			if matchGlob(pattern, tag) {
+			if MatchGlob(pattern, tag) {
 				return true
 			}
 		}
@@ -172,7 +172,7 @@ func (w *Workflow) shouldTriggerOnPush(branch, tag string) bool {
 			return true
 		}
 		for _, pattern := range w.On.Push.Branches {
-			if matchGlob(pattern, branch) {
+			if MatchGlob(pattern, branch) {
 				return true
 			}
 		}
@@ -196,7 +196,7 @@ func (w *Workflow) shouldTriggerOnPullRequest(targetBranch string) bool {
 
 	// Check if target branch matches any pattern
 	for _, pattern := range w.On.PullRequest.Branches {
-		if matchGlob(pattern, targetBranch) {
+		if MatchGlob(pattern, targetBranch) {
 			return true
 		}
 	}
@@ -204,9 +204,9 @@ func (w *Workflow) shouldTriggerOnPullRequest(targetBranch string) bool {
 	return false
 }
 
-// matchGlob performs simple glob pattern matching.
+// MatchGlob performs simple glob pattern matching.
 // Supports * for any characters and ** for any path segments.
-func matchGlob(pattern, value string) bool {
+func MatchGlob(pattern, value string) bool {
 	// Handle exact match
 	if pattern == value {
 		return true

@@ -244,6 +244,16 @@ func (v *Validator) validateStep(step *Step) error {
 		}
 	}
 
+	// Validate condition expression
+	if step.If != "" {
+		if err := ValidateCondition(step.If); err != nil {
+			return &ValidationError{
+				Field:   fmt.Sprintf("steps.%s.if", step.Name),
+				Message: err.Error(),
+			}
+		}
+	}
+
 	// Validate cache config
 	if step.Cache != nil {
 		if len(step.Cache.Paths) == 0 {

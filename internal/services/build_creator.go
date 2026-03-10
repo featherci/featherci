@@ -135,6 +135,15 @@ func (c *BuildCreator) createSteps(ctx context.Context, build *models.Build, wf 
 			}
 		}
 
+		// Evaluate condition: if condition is false, skip this step
+		if s.If != "" && build.Branch != nil {
+			vars := map[string]string{"branch": *build.Branch}
+			condMet, err := workflow.EvaluateCondition(s.If, vars)
+			if err == nil && !condMet {
+				status = models.StepStatusSkipped
+			}
+		}
+
 		step := &models.BuildStep{
 			BuildID:          build.ID,
 			Name:             s.Name,
@@ -147,6 +156,7 @@ func (c *BuildCreator) createSteps(ctx context.Context, build *models.Build, wf 
 			WorkingDir:       s.WorkingDir,
 			TimeoutMinutes:   s.GetTimeout(),
 			Cache:            cache,
+			ConditionExpr:    s.If,
 		}
 
 		steps = append(steps, step)

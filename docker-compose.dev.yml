@@ -1,0 +1,23 @@
+services:
+  featherci:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - FEATHERCI_BASE_URL=http://localhost:8080
+      - FEATHERCI_SECRET_KEY=development-key-32-bytes-long!!
+      - FEATHERCI_ADMINS=testuser
+    volumes:
+      - featherci-data:/data
+      - featherci-cache:/cache
+      - featherci-workspaces:/workspaces
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: ["featherci", "--dev"]
+    restart: unless-stopped
+
+volumes:
+  featherci-data:
+  featherci-cache:
+  featherci-workspaces:

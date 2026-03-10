@@ -1,0 +1,32 @@
+services:
+  featherci:
+    image: featherci/featherci:latest
+    build:
+      context: .
+      args:
+        VERSION: ${VERSION:-dev}
+    ports:
+      - "8080:8080"
+    environment:
+      - FEATHERCI_BASE_URL=${FEATHERCI_BASE_URL:-http://localhost:8080}
+      - FEATHERCI_SECRET_KEY=${FEATHERCI_SECRET_KEY}
+      - FEATHERCI_ADMINS=${FEATHERCI_ADMINS}
+      - FEATHERCI_GITHUB_CLIENT_ID=${FEATHERCI_GITHUB_CLIENT_ID}
+      - FEATHERCI_GITHUB_CLIENT_SECRET=${FEATHERCI_GITHUB_CLIENT_SECRET}
+      - FEATHERCI_GITLAB_URL=${FEATHERCI_GITLAB_URL}
+      - FEATHERCI_GITLAB_CLIENT_ID=${FEATHERCI_GITLAB_CLIENT_ID}
+      - FEATHERCI_GITLAB_CLIENT_SECRET=${FEATHERCI_GITLAB_CLIENT_SECRET}
+      - FEATHERCI_GITEA_URL=${FEATHERCI_GITEA_URL}
+      - FEATHERCI_GITEA_CLIENT_ID=${FEATHERCI_GITEA_CLIENT_ID}
+      - FEATHERCI_GITEA_CLIENT_SECRET=${FEATHERCI_GITEA_CLIENT_SECRET}
+    volumes:
+      - featherci-data:/data
+      - featherci-cache:/cache
+      - featherci-workspaces:/workspaces
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+volumes:
+  featherci-data:
+  featherci-cache:
+  featherci-workspaces:

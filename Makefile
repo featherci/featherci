@@ -43,7 +43,7 @@ endif
 # HTMX version
 HTMX_VERSION := 1.9.10
 
-.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets
+.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets docker-build docker-run docker-stop docker-logs
 
 all: build
 
@@ -130,6 +130,28 @@ tidy:
 ## generate-key: Generate a secure encryption key
 generate-key: build
 	@$(BUILD_DIR)/$(BINARY_NAME) --generate-key
+
+## docker-build: Build the Docker image
+docker-build:
+	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT=$(COMMIT) \
+		--build-arg BUILD_DATE=$(BUILD_DATE) \
+		-t featherci/featherci:latest \
+		-t featherci/featherci:$(VERSION) \
+		.
+
+## docker-run: Start FeatherCI via Docker Compose
+docker-run:
+	docker compose up -d
+
+## docker-stop: Stop FeatherCI containers
+docker-stop:
+	docker compose down
+
+## docker-logs: Tail FeatherCI container logs
+docker-logs:
+	docker compose logs -f
 
 ## help: Show this help message
 help:

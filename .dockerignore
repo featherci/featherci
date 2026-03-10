@@ -1,0 +1,38 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+dist/
+
+# Test files
+*_test.go
+testdata/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI files
+.github/
+.gitlab-ci.yml
+
+# Local config
+.env
+.env.*
+*.db
+
+# Plan files
+plan/
+tasks/
+
+# Workspaces (local build data)
+workspaces/

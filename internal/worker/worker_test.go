@@ -237,7 +237,7 @@ func makeWorker(
 	ws *mockWorkspace,
 ) *Worker {
 	mockExec := &noopExecutor{exitCode: 0}
-	runner := executor.NewStepRunner(mockExec)
+	runner := executor.NewStepRunner(mockExec, nil)
 	cfg := Config{
 		PollInterval:      50 * time.Millisecond,
 		HeartbeatInterval: 5 * time.Second,
@@ -307,7 +307,7 @@ func TestSkipsWhenAtCapacity(t *testing.T) {
 		MaxConcurrent:     1,
 	}
 	mockExec := &noopExecutor{exitCode: 0}
-	runner := executor.NewStepRunner(mockExec)
+	runner := executor.NewStepRunner(mockExec, nil)
 
 	w := New(cfg, steps, builds, projects, workers, tokens, nil, gitSvc, ws, runner, nil)
 	w.id = "test-worker"

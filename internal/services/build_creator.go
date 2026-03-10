@@ -127,6 +127,14 @@ func (c *BuildCreator) createSteps(ctx context.Context, build *models.Build, wf 
 			image = &s.Image
 		}
 
+		var cache *models.CacheConfig
+		if s.Cache != nil {
+			cache = &models.CacheConfig{
+				Paths: s.Cache.Paths,
+				Key:   s.Cache.Key,
+			}
+		}
+
 		step := &models.BuildStep{
 			BuildID:          build.ID,
 			Name:             s.Name,
@@ -138,6 +146,7 @@ func (c *BuildCreator) createSteps(ctx context.Context, build *models.Build, wf 
 			DependsOn:        s.DependsOn,
 			WorkingDir:       s.WorkingDir,
 			TimeoutMinutes:   s.GetTimeout(),
+			Cache:            cache,
 		}
 
 		steps = append(steps, step)

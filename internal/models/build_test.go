@@ -72,6 +72,7 @@ func setupBuildTestDB(t *testing.T) *sqlx.DB {
 			commands_json TEXT DEFAULT '[]',
 			env_json TEXT DEFAULT '{}',
 			depends_on_json TEXT DEFAULT '[]',
+			cache_json TEXT DEFAULT '',
 			working_dir TEXT DEFAULT '',
 			timeout_minutes INTEGER DEFAULT 60
 		);

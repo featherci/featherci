@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/featherci/featherci/internal/cache"
 	"github.com/featherci/featherci/internal/executor"
 	"github.com/featherci/featherci/internal/models"
 )
@@ -298,6 +299,15 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 				}
 			}
 		}
+	}
+
+	// Resolve cache key if step has cache config
+	if step.Cache != nil {
+		branch := ""
+		if build.Branch != nil {
+			branch = *build.Branch
+		}
+		step.CacheResolvedKey = cache.ResolveKey(step.Cache.Key, project.ID, branch, wsPath)
 	}
 
 	// Update worker status to busy

@@ -10,14 +10,22 @@ import (
 	"github.com/featherci/featherci/internal/models"
 )
 
+// StepCache abstracts cache save/restore for the step runner.
+type StepCache interface {
+	Save(key string, sourcePaths []string, workspacePath string) error
+	Restore(key string, workspacePath string) error
+}
+
 // StepRunner orchestrates the execution of individual build steps.
 type StepRunner struct {
 	executor Executor
+	cache    StepCache
 }
 
 // NewStepRunner creates a runner backed by the given executor.
-func NewStepRunner(executor Executor) *StepRunner {
-	return &StepRunner{executor: executor}
+// cache may be nil if caching is not configured.
+func NewStepRunner(executor Executor, cache StepCache) *StepRunner {
+	return &StepRunner{executor: executor, cache: cache}
 }
 
 // StepResult captures the outcome of running a build step,
@@ -59,6 +67,18 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 		return failedResult(fmt.Sprintf("creating log writer: %v", err))
 	}
 
+	// Restore cache before execution
+	if r.cache != nil && step.Cache != nil && step.CacheResolvedKey != "" {
+		if err := r.cache.Restore(step.CacheResolvedKey, workspacePath); err != nil {
+			// Log but don't fail the step
+			f, ferr := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+			if ferr == nil {
+				fmt.Fprintf(f, "cache restore warning: %s\n", err)
+				f.Close()
+			}
+		}
+	}
+
 	opts := RunOptions{
 		Image:    image,
 		Commands: step.Commands,
@@ -92,6 +112,17 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 	status := models.StepStatusSuccess
 	if exitCode != 0 {
 		status = models.StepStatusFailure
+	}
+
+	// Save cache after successful execution
+	if exitCode == 0 && r.cache != nil && step.Cache != nil && step.CacheResolvedKey != "" {
+		if err := r.cache.Save(step.CacheResolvedKey, step.Cache.Paths, workspacePath); err != nil {
+			f, ferr := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0644)
+			if ferr == nil {
+				fmt.Fprintf(f, "cache save warning: %s\n", err)
+				f.Close()
+			}
+		}
 	}
 
 	return &StepResult{

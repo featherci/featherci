@@ -47,7 +47,7 @@ func TestStepRunner_RunStep_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")
@@ -95,7 +95,7 @@ func TestStepRunner_RunStep_Failure(t *testing.T) {
 			return &RunResult{ExitCode: 1, StartedAt: time.Now(), FinishedAt: time.Now()}, nil
 		},
 	}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")
@@ -123,7 +123,7 @@ func TestStepRunner_RunStep_ExecutorError(t *testing.T) {
 			return nil, errors.New("docker daemon not running")
 		},
 	}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")
@@ -162,7 +162,7 @@ func TestStepRunner_RunStep_DefaultImage(t *testing.T) {
 			return &RunResult{ExitCode: 0}, nil
 		},
 	}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")
@@ -188,7 +188,7 @@ func TestStepRunner_RunStep_DefaultWorkDir(t *testing.T) {
 			return &RunResult{ExitCode: 0}, nil
 		},
 	}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")
@@ -209,7 +209,7 @@ func TestStepRunner_RunStep_DefaultWorkDir(t *testing.T) {
 
 func TestStepRunner_RunStep_LogPath(t *testing.T) {
 	exec := &mockExecutor{}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")
@@ -240,7 +240,7 @@ func TestStepRunner_RunStep_OutputCapture(t *testing.T) {
 			return &RunResult{ExitCode: 0, StartedAt: time.Now(), FinishedAt: time.Now()}, nil
 		},
 	}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")
@@ -279,7 +279,7 @@ func TestStepRunner_RunStep_DefaultTimeout(t *testing.T) {
 			return &RunResult{ExitCode: 0}, nil
 		},
 	}
-	runner := NewStepRunner(exec)
+	runner := NewStepRunner(exec, nil)
 
 	dir := t.TempDir()
 	workspace := filepath.Join(dir, "workspace")

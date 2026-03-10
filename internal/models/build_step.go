@@ -54,16 +54,25 @@ type BuildStep struct {
 	CommandsJSON   string `db:"commands_json"`
 	EnvJSON        string `db:"env_json"`
 	DependsOnJSON  string `db:"depends_on_json"`
+	CacheJSON      string `db:"cache_json"`
 	WorkingDir     string `db:"working_dir"`
 	TimeoutMinutes int    `db:"timeout_minutes"`
 
 	// Deserialized fields (not stored directly)
-	Commands  []string          `db:"-"`
-	Env       map[string]string `db:"-"`
-	DependsOn []string          `db:"-"`
+	Commands        []string          `db:"-"`
+	Env             map[string]string `db:"-"`
+	DependsOn       []string          `db:"-"`
+	Cache           *CacheConfig      `db:"-"`
+	CacheResolvedKey string           `db:"-"`
 
 	// Loaded via joins
 	ApprovedByUser *User `db:"-"`
+}
+
+// CacheConfig defines caching configuration for a build step.
+type CacheConfig struct {
+	Paths []string `json:"paths"`
+	Key   string   `json:"key"`
 }
 
 // IsTerminal returns true if the step is in a terminal state.
@@ -127,6 +136,16 @@ func (s *BuildStep) SerializeJSON() error {
 		s.DependsOnJSON = "[]"
 	}
 
+	if s.Cache != nil {
+		data, err := json.Marshal(s.Cache)
+		if err != nil {
+			return err
+		}
+		s.CacheJSON = string(data)
+	} else {
+		s.CacheJSON = ""
+	}
+
 	return nil
 }
 
@@ -146,6 +165,13 @@ func (s *BuildStep) DeserializeJSON() error {
 
 	if s.DependsOnJSON != "" {
 		if err := json.Unmarshal([]byte(s.DependsOnJSON), &s.DependsOn); err != nil {
+			return err
+		}
+	}
+
+	if s.CacheJSON != "" {
+		s.Cache = &CacheConfig{}
+		if err := json.Unmarshal([]byte(s.CacheJSON), s.Cache); err != nil {
 			return err
 		}
 	}
@@ -191,8 +217,8 @@ func (r *SQLiteBuildStepRepository) Create(ctx context.Context, step *BuildStep)
 	}
 
 	query := `
-		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, working_dir, timeout_minutes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, working_dir, timeout_minutes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	result, err := r.db.ExecContext(ctx, query,
 		step.BuildID,
@@ -203,6 +229,7 @@ func (r *SQLiteBuildStepRepository) Create(ctx context.Context, step *BuildStep)
 		step.CommandsJSON,
 		step.EnvJSON,
 		step.DependsOnJSON,
+		step.CacheJSON,
 		step.WorkingDir,
 		step.TimeoutMinutes,
 	)
@@ -228,8 +255,8 @@ func (r *SQLiteBuildStepRepository) CreateBatch(ctx context.Context, steps []*Bu
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, working_dir, timeout_minutes)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, working_dir, timeout_minutes)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	stmt, err := tx.PreparexContext(ctx, query)
 	if err != nil {
@@ -251,6 +278,7 @@ func (r *SQLiteBuildStepRepository) CreateBatch(ctx context.Context, steps []*Bu
 			step.CommandsJSON,
 			step.EnvJSON,
 			step.DependsOnJSON,
+			step.CacheJSON,
 			step.WorkingDir,
 			step.TimeoutMinutes,
 		)
@@ -348,7 +376,7 @@ func (r *SQLiteBuildStepRepository) Update(ctx context.Context, step *BuildStep)
 		UPDATE build_steps
 		SET status = ?, exit_code = ?, started_at = ?, finished_at = ?, worker_id = ?, log_path = ?,
 		    approved_by = ?, approved_at = ?, commands_json = ?, env_json = ?, depends_on_json = ?,
-		    working_dir = ?, timeout_minutes = ?
+		    cache_json = ?, working_dir = ?, timeout_minutes = ?
 		WHERE id = ?
 	`
 	result, err := r.db.ExecContext(ctx, query,
@@ -363,6 +391,7 @@ func (r *SQLiteBuildStepRepository) Update(ctx context.Context, step *BuildStep)
 		step.CommandsJSON,
 		step.EnvJSON,
 		step.DependsOnJSON,
+		step.CacheJSON,
 		step.WorkingDir,
 		step.TimeoutMinutes,
 		step.ID,

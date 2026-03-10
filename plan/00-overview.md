@@ -93,8 +93,9 @@ featherci/
 9. **Manual Approval** (Step 22): Approval gates for deployments
 10. **Status Integration** (Step 23): Commit status posting to platforms
 11. **Deployment** (Steps 24-25): Docker, systemd, Homebrew packaging
-12. **Polish** (Step 26): Testing and final polish
-13. **Documentation** (Steps 27-28): README and GitHub Pages documentation site
+12. **Integration Testing** (Step 26): Test application with full workflow
+13. **Polish** (Step 27): Final testing and polish
+14. **Documentation** (Steps 28-29): README and GitHub Pages documentation site
 
 ## Progress Tracker
 
@@ -125,9 +126,10 @@ Use this checklist to track completion. Each step can be done in a fresh session
 - [ ] **23 - Commit Status** (Sonnet) - Status posting to platforms
 - [ ] **24 - Docker Build** (Sonnet) - Dockerfile, compose
 - [ ] **25 - Packaging** (Sonnet) - systemd, Homebrew
-- [ ] **26 - Testing & Polish** (Opus) - Tests, final checks
-- [ ] **27 - README** (Sonnet) - Repository docs
-- [ ] **28 - Documentation Site** (Opus) - GitHub Pages site
+- [ ] **26 - Integration Testing** (Opus) - Test app setup, end-to-end testing
+- [ ] **27 - Testing & Polish** (Opus) - Tests, final checks
+- [ ] **28 - README** (Sonnet) - Repository docs
+- [ ] **29 - Documentation Site** (Opus) - GitHub Pages site
 
 ## Model Assignments
 
@@ -158,8 +160,9 @@ Use this checklist to track completion. Each step can be done in a fresh session
 | 23 | Commit Status | Sonnet | Standard API integration |
 | 24 | Docker Build | Sonnet | Standard Dockerfile |
 | 25 | Packaging | Sonnet | Standard scripts |
-| 26 | Testing & Polish | **Opus** | Comprehensive testing strategy |
-| 27 | README | Sonnet | Documentation writing |
-| 28 | Documentation Site | **Opus** | Public website design, polished UX |
+| 26 | Integration Testing | **Opus** | Test app with complex workflow, user coordination |
+| 27 | Testing & Polish | **Opus** | Comprehensive testing strategy |
+| 28 | README | Sonnet | Documentation writing |
+| 29 | Documentation Site | **Opus** | Public website design, polished UX |
 
-**Summary:** 12 steps use Opus (complex logic + UI design), 16 steps use Sonnet (standard patterns)
+**Summary:** 13 steps use Opus (complex logic + UI design), 16 steps use Sonnet (standard patterns)

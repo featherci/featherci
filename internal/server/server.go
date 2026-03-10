@@ -32,6 +32,7 @@ type Server struct {
 	templates      *templates.Engine
 	authHandler    *handlers.AuthHandler
 	projectHandler *handlers.ProjectHandler
+	webhookHandler *handlers.WebhookHandler
 	authMiddleware *middleware.AuthMiddleware
 }
 
@@ -62,6 +63,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(providers, users, sessions, cfg)
 	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, providers, tmpl, logger)
+	webhookHandler := handlers.NewWebhookHandler(projects, logger)
 
 	return &Server{
 		config:         cfg,
@@ -75,6 +77,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 		templates:      tmpl,
 		authHandler:    authHandler,
 		projectHandler: projectHandler,
+		webhookHandler: webhookHandler,
 		authMiddleware: authMiddleware,
 	}, nil
 }

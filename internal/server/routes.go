@@ -94,9 +94,9 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.HandleFunc("POST /api/worker/heartbeat", s.handleNotImplemented)
 
 	// Webhooks (no auth, validated by signature)
-	mux.HandleFunc("POST /webhooks/github", s.handleNotImplemented)
-	mux.HandleFunc("POST /webhooks/gitlab", s.handleNotImplemented)
-	mux.HandleFunc("POST /webhooks/gitea", s.handleNotImplemented)
+	mux.HandleFunc("POST /webhooks/github", s.webhookHandler.HandleGitHub)
+	mux.HandleFunc("POST /webhooks/gitlab", s.webhookHandler.HandleGitLab)
+	mux.HandleFunc("POST /webhooks/gitea", s.webhookHandler.HandleGitea)
 
 	return mux
 }

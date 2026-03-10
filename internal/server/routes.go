@@ -2,14 +2,24 @@ package server
 
 import (
 	"encoding/json"
+	"io/fs"
 	"net/http"
 
 	"github.com/featherci/featherci/internal/middleware"
+	"github.com/featherci/featherci/web/static"
 )
 
 // setupRoutes configures all HTTP routes.
 func (s *Server) setupRoutes() http.Handler {
 	mux := http.NewServeMux()
+
+	// Static files (CSS, JS, images) - served from embedded filesystem
+	staticFS, err := fs.Sub(static.Files, ".")
+	if err != nil {
+		s.logger.Error("failed to create static file sub-filesystem", "error", err)
+	} else {
+		mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+	}
 
 	// Health check endpoints (no auth required)
 	mux.HandleFunc("GET /health", s.handleHealth)

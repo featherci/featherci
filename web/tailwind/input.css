@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center;
+  }
+  .btn-primary {
+    @apply bg-feather-600 text-white hover:bg-feather-700 focus:ring-feather-500;
+  }
+  .btn-secondary {
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
+  }
+  .btn-danger {
+    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+  .btn-lg {
+    @apply px-6 py-3 text-lg;
+  }
+
+  /* Provider-specific login buttons */
+  .btn-github {
+    @apply bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-700;
+  }
+  .btn-gitlab {
+    @apply bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-400;
+  }
+  .btn-gitea {
+    @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+  }
+  .btn-dev {
+    @apply bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-400;
+  }
+
+  /* Form inputs */
+  .input {
+    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-feather-500 focus:ring-feather-500 sm:text-sm;
+  }
+  .input-error {
+    @apply border-red-300 focus:border-red-500 focus:ring-red-500;
+  }
+
+  /* Cards */
+  .card {
+    @apply bg-white shadow rounded-lg;
+  }
+  .card-header {
+    @apply px-4 py-5 border-b border-gray-200 sm:px-6;
+  }
+  .card-body {
+    @apply px-4 py-5 sm:p-6;
+  }
+  .card-footer {
+    @apply px-4 py-4 border-t border-gray-200 sm:px-6;
+  }
+
+  /* Badges for build status */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-success {
+    @apply bg-green-100 text-green-800;
+  }
+  .badge-failure {
+    @apply bg-red-100 text-red-800;
+  }
+  .badge-pending {
+    @apply bg-yellow-100 text-yellow-800;
+  }
+  .badge-running {
+    @apply bg-blue-100 text-blue-800;
+  }
+  .badge-cancelled {
+    @apply bg-gray-100 text-gray-800;
+  }
+  .badge-waiting {
+    @apply bg-purple-100 text-purple-800;
+  }
+
+  /* Navigation */
+  .nav-link {
+    @apply text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors;
+  }
+  .nav-link-active {
+    @apply text-feather-700 bg-feather-50;
+  }
+
+  /* Tables */
+  .table {
+    @apply min-w-full divide-y divide-gray-200;
+  }
+  .table th {
+    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50;
+  }
+  .table td {
+    @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+  }
+  .table tbody tr {
+    @apply hover:bg-gray-50 transition-colors;
+  }
+
+  /* Alerts */
+  .alert {
+    @apply p-4 rounded-md;
+  }
+  .alert-info {
+    @apply bg-blue-50 text-blue-800;
+  }
+  .alert-success {
+    @apply bg-green-50 text-green-800;
+  }
+  .alert-warning {
+    @apply bg-yellow-50 text-yellow-800;
+  }
+  .alert-error {
+    @apply bg-red-50 text-red-800;
+  }
+
+  /* Code blocks */
+  .code {
+    @apply font-mono text-sm bg-gray-100 rounded px-1.5 py-0.5;
+  }
+  .code-block {
+    @apply font-mono text-sm bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
+  }
+}

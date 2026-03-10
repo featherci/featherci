@@ -2,6 +2,9 @@
 /bin/
 featherci
 
+# Tailwind CLI binary (downloaded on demand)
+bin/tailwindcss
+
 # IDE
 .idea/
 .vscode/

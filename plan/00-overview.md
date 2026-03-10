@@ -100,13 +100,13 @@ featherci/
 
 Use this checklist to track completion. Each step can be done in a fresh session - just reference the relevant `plan/XX-*.md` file.
 
-- [ ] **01 - Project Init** (Sonnet) - Go module, directories, Makefile
-- [ ] **02 - Configuration** (Sonnet) - Environment variable loading
-- [ ] **03 - Database** (Sonnet) - SQLite schema, migrations
-- [ ] **04 - OAuth Providers** (Sonnet) - GitHub, GitLab, Gitea OAuth
-- [ ] **05 - User Management** (Sonnet) - Sessions, auth middleware
-- [ ] **06 - Web Server** (Sonnet) - HTTP routing, middleware
-- [ ] **07 - Tailwind Setup** (Sonnet) - CSS build, HTMX
+- [x] **01 - Project Init** (Sonnet) - Go module, directories, Makefile
+- [x] **02 - Configuration** (Sonnet) - Environment variable loading
+- [x] **03 - Database** (Sonnet) - SQLite schema, migrations
+- [x] **04 - OAuth Providers** (Sonnet) - GitHub, GitLab, Gitea OAuth
+- [x] **05 - User Management** (Sonnet) - Sessions, auth middleware
+- [x] **06 - Web Server** (Sonnet) - HTTP routing, middleware
+- [x] **07 - Tailwind Setup** (Sonnet) - CSS build, HTMX
 - [ ] **08 - Templates** (Opus) - Base layout, components
 - [ ] **09 - Project Management** (Opus) - Project CRUD, repo listing
 - [ ] **10 - Webhooks** (Sonnet) - Webhook handlers

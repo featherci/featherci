@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "modernc.org/sqlite"
@@ -132,6 +133,52 @@ func TestWorkerRepository_UpdateStatus(t *testing.T) {
 	}
 	if got.CurrentStepID == nil || *got.CurrentStepID != stepID {
 		t.Errorf("got current_step_id %v, want %d", got.CurrentStepID, stepID)
+	}
+}
+
+func TestWorkerRepository_ListStale(t *testing.T) {
+	db := setupWorkerTestDB(t)
+	defer db.Close()
+
+	repo := NewWorkerRepository(db)
+	ctx := context.Background()
+
+	// Register two workers
+	w1 := &Worker{ID: "worker-fresh", Name: "fresh", Status: WorkerStatusIdle}
+	w2 := &Worker{ID: "worker-stale", Name: "stale", Status: WorkerStatusBusy}
+	w3 := &Worker{ID: "worker-offline", Name: "offline", Status: WorkerStatusOffline}
+
+	for _, w := range []*Worker{w1, w2, w3} {
+		if err := repo.Register(ctx, w); err != nil {
+			t.Fatalf("Register %s failed: %v", w.ID, err)
+		}
+	}
+
+	// Update heartbeats: w1 is recent, w2 is old
+	if err := repo.UpdateHeartbeat(ctx, w1.ID); err != nil {
+		t.Fatalf("UpdateHeartbeat failed: %v", err)
+	}
+	// Set w2 heartbeat to 2 minutes ago
+	oldTime := time.Now().Add(-2 * time.Minute)
+	if _, err := db.Exec("UPDATE workers SET last_heartbeat = ? WHERE id = ?", oldTime, w2.ID); err != nil {
+		t.Fatalf("manual heartbeat update failed: %v", err)
+	}
+	// w3 is offline with old heartbeat
+	if _, err := db.Exec("UPDATE workers SET last_heartbeat = ? WHERE id = ?", oldTime, w3.ID); err != nil {
+		t.Fatalf("manual heartbeat update failed: %v", err)
+	}
+
+	stale, err := repo.ListStale(ctx, 60*time.Second)
+	if err != nil {
+		t.Fatalf("ListStale() error = %v", err)
+	}
+
+	// Only w2 should be stale (w3 is offline, w1 is fresh)
+	if len(stale) != 1 {
+		t.Fatalf("len(stale) = %d, want 1", len(stale))
+	}
+	if stale[0].ID != "worker-stale" {
+		t.Errorf("stale[0].ID = %q, want %q", stale[0].ID, "worker-stale")
 	}
 }
 

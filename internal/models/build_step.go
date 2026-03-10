@@ -169,6 +169,9 @@ type BuildStepRepository interface {
 	AddDependency(ctx context.Context, stepID, dependsOnID int64) error
 	GetDependencies(ctx context.Context, stepID int64) ([]*BuildStep, error)
 	UpdateReadySteps(ctx context.Context, buildID int64) (int64, error)
+	SkipDependentSteps(ctx context.Context, buildID int64) (int64, error)
+	CancelBuildSteps(ctx context.Context, buildID int64) (int64, error)
+	ResetStepsForWorker(ctx context.Context, workerID string) error
 }
 
 // SQLiteBuildStepRepository implements BuildStepRepository using SQLite.
@@ -495,4 +498,47 @@ func (r *SQLiteBuildStepRepository) UpdateReadySteps(ctx context.Context, buildI
 		return 0, err
 	}
 	return result.RowsAffected()
+}
+
+// SkipDependentSteps transitions waiting steps to skipped when any dependency has failed, been cancelled, or skipped.
+// Returns the number of steps updated. Must be called in a loop until 0 rows to handle cascading skips.
+func (r *SQLiteBuildStepRepository) SkipDependentSteps(ctx context.Context, buildID int64) (int64, error) {
+	query := `
+		UPDATE build_steps SET status = 'skipped'
+		WHERE build_id = ? AND status = 'waiting'
+		  AND EXISTS (
+			  SELECT 1 FROM step_dependencies sd
+			  JOIN build_steps dep ON sd.depends_on_step_id = dep.id
+			  WHERE sd.step_id = build_steps.id
+			    AND dep.status IN ('failure', 'cancelled', 'skipped')
+		  )
+	`
+	result, err := r.db.ExecContext(ctx, query, buildID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+// CancelBuildSteps cancels all non-terminal steps for a build.
+func (r *SQLiteBuildStepRepository) CancelBuildSteps(ctx context.Context, buildID int64) (int64, error) {
+	query := `
+		UPDATE build_steps SET status = 'cancelled'
+		WHERE build_id = ? AND status IN ('pending', 'waiting', 'ready', 'waiting_approval')
+	`
+	result, err := r.db.ExecContext(ctx, query, buildID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+// ResetStepsForWorker resets running steps for a stale worker back to ready.
+func (r *SQLiteBuildStepRepository) ResetStepsForWorker(ctx context.Context, workerID string) error {
+	query := `
+		UPDATE build_steps SET status = 'ready', worker_id = NULL, started_at = NULL
+		WHERE worker_id = ? AND status = 'running'
+	`
+	_, err := r.db.ExecContext(ctx, query, workerID)
+	return err
 }

@@ -334,6 +334,48 @@ func TestBuildRepository_SetStartedAndFinished(t *testing.T) {
 	}
 }
 
+func TestBuildRepository_CancelBuild(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	repo := NewBuildRepository(db)
+	ctx := context.Background()
+
+	// Cancel a pending build
+	build := &Build{ProjectID: project.ID, CommitSHA: "abc123", Status: BuildStatusPending}
+	if err := repo.Create(ctx, build); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+
+	if err := repo.CancelBuild(ctx, build.ID); err != nil {
+		t.Fatalf("CancelBuild() error = %v", err)
+	}
+
+	got, _ := repo.GetByID(ctx, build.ID)
+	if got.Status != BuildStatusCancelled {
+		t.Errorf("Status = %q, want %q", got.Status, BuildStatusCancelled)
+	}
+	if got.FinishedAt == nil {
+		t.Error("FinishedAt should be set")
+	}
+
+	// Cancel an already-finished build should return ErrNotFound
+	build2 := &Build{ProjectID: project.ID, CommitSHA: "def456", Status: BuildStatusSuccess}
+	if err := repo.Create(ctx, build2); err != nil {
+		t.Fatalf("Create() error = %v", err)
+	}
+	// Manually set status to success (Create sets it to pending, need to update)
+	if err := repo.UpdateStatus(ctx, build2.ID, BuildStatusSuccess); err != nil {
+		t.Fatalf("UpdateStatus error = %v", err)
+	}
+
+	err := repo.CancelBuild(ctx, build2.ID)
+	if err != ErrNotFound {
+		t.Errorf("CancelBuild on finished build: err = %v, want ErrNotFound", err)
+	}
+}
+
 func TestBuild_CalculateStatus(t *testing.T) {
 	tests := []struct {
 		name     string

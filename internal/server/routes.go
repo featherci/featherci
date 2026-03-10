@@ -88,6 +88,10 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.Handle("POST /projects/{namespace}/{name}/settings", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Update)))
 	mux.Handle("POST /projects/{namespace}/{name}/delete", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Delete)))
 
+	// Build actions
+	mux.Handle("POST /projects/{namespace}/{name}/builds/{number}/cancel",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.Cancel)))
+
 	// API routes for workers
 	mux.HandleFunc("GET /api/worker/jobs", s.handleNotImplemented)
 	mux.HandleFunc("POST /api/worker/jobs/{id}/status", s.handleNotImplemented)

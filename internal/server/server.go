@@ -12,10 +12,14 @@ import (
 	"github.com/featherci/featherci/internal/auth"
 	"github.com/featherci/featherci/internal/config"
 	"github.com/featherci/featherci/internal/database"
+	"github.com/featherci/featherci/internal/gitclient"
 	"github.com/featherci/featherci/internal/handlers"
 	"github.com/featherci/featherci/internal/middleware"
 	"github.com/featherci/featherci/internal/models"
+	"github.com/featherci/featherci/internal/services"
 	"github.com/featherci/featherci/internal/templates"
+	"github.com/featherci/featherci/internal/worker"
+	"github.com/featherci/featherci/internal/workflow"
 )
 
 // Server represents the FeatherCI HTTP server.
@@ -33,6 +37,7 @@ type Server struct {
 	authHandler    *handlers.AuthHandler
 	projectHandler *handlers.ProjectHandler
 	webhookHandler *handlers.WebhookHandler
+	buildHandler   *handlers.BuildHandler
 	authMiddleware *middleware.AuthMiddleware
 }
 
@@ -53,6 +58,8 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	sessions := models.NewSessionStore(db.DB)
 	projects := models.NewProjectRepository(db.DB)
 	projectUsers := models.NewProjectUserRepository(db.DB)
+	builds := models.NewBuildRepository(db.DB)
+	steps := models.NewBuildStepRepository(db.DB)
 
 	// Initialize OAuth providers
 	providers := auth.NewRegistry(cfg)
@@ -60,10 +67,17 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	// Initialize auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(sessions, users)
 
+	// Initialize build pipeline dependencies
+	fileFetcher := gitclient.NewFileContentFetcher(cfg.GitLabURL, cfg.GiteaURL)
+	parser := workflow.NewParser()
+	tokenSource := worker.NewProjectTokenSource(projectUsers)
+	buildCreator := services.NewBuildCreator(builds, steps)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(providers, users, sessions, cfg)
 	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, providers, tmpl, logger)
-	webhookHandler := handlers.NewWebhookHandler(projects, logger)
+	webhookHandler := handlers.NewWebhookHandler(projects, logger, buildCreator, fileFetcher, tokenSource, parser)
+	buildHandler := handlers.NewBuildHandler(projects, builds, steps, logger)
 
 	return &Server{
 		config:         cfg,
@@ -78,6 +92,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 		authHandler:    authHandler,
 		projectHandler: projectHandler,
 		webhookHandler: webhookHandler,
+		buildHandler:   buildHandler,
 		authMiddleware: authMiddleware,
 	}, nil
 }

@@ -551,6 +551,284 @@ func TestBuildStep_IsTerminal(t *testing.T) {
 	}
 }
 
+func TestBuildStepRepository_SkipDependentSteps(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{ProjectID: project.ID, CommitSHA: "abc123", Status: BuildStatusPending}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	lint := &BuildStep{BuildID: build.ID, Name: "lint", Image: &image, Status: StepStatusReady}
+	test := &BuildStep{BuildID: build.ID, Name: "test", Image: &image, Status: StepStatusWaiting}
+
+	if err := stepRepo.Create(ctx, lint); err != nil {
+		t.Fatalf("Create lint error = %v", err)
+	}
+	if err := stepRepo.Create(ctx, test); err != nil {
+		t.Fatalf("Create test error = %v", err)
+	}
+	if err := stepRepo.AddDependency(ctx, test.ID, lint.ID); err != nil {
+		t.Fatalf("AddDependency error = %v", err)
+	}
+
+	// lint not failed yet — should skip nothing
+	n, err := stepRepo.SkipDependentSteps(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("SkipDependentSteps() error = %v", err)
+	}
+	if n != 0 {
+		t.Errorf("skipped = %d, want 0", n)
+	}
+
+	// Fail lint → test should be skipped
+	if err := stepRepo.UpdateStatus(ctx, lint.ID, StepStatusFailure); err != nil {
+		t.Fatalf("UpdateStatus error = %v", err)
+	}
+
+	n, err = stepRepo.SkipDependentSteps(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("SkipDependentSteps() error = %v", err)
+	}
+	if n != 1 {
+		t.Errorf("skipped = %d, want 1", n)
+	}
+
+	got, _ := stepRepo.GetByID(ctx, test.ID)
+	if got.Status != StepStatusSkipped {
+		t.Errorf("test.Status = %q, want %q", got.Status, StepStatusSkipped)
+	}
+}
+
+func TestBuildStepRepository_SkipCascade(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{ProjectID: project.ID, CommitSHA: "abc123", Status: BuildStatusPending}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	a := &BuildStep{BuildID: build.ID, Name: "a", Image: &image, Status: StepStatusReady}
+	b := &BuildStep{BuildID: build.ID, Name: "b", Image: &image, Status: StepStatusWaiting}
+	c := &BuildStep{BuildID: build.ID, Name: "c", Image: &image, Status: StepStatusWaiting}
+
+	for _, s := range []*BuildStep{a, b, c} {
+		if err := stepRepo.Create(ctx, s); err != nil {
+			t.Fatalf("Create %s error = %v", s.Name, err)
+		}
+	}
+
+	// b depends on a, c depends on b
+	if err := stepRepo.AddDependency(ctx, b.ID, a.ID); err != nil {
+		t.Fatalf("AddDependency error = %v", err)
+	}
+	if err := stepRepo.AddDependency(ctx, c.ID, b.ID); err != nil {
+		t.Fatalf("AddDependency error = %v", err)
+	}
+
+	// Fail a
+	if err := stepRepo.UpdateStatus(ctx, a.ID, StepStatusFailure); err != nil {
+		t.Fatalf("UpdateStatus error = %v", err)
+	}
+
+	// Loop until no more skips (cascade)
+	total := int64(0)
+	for {
+		n, err := stepRepo.SkipDependentSteps(ctx, build.ID)
+		if err != nil {
+			t.Fatalf("SkipDependentSteps() error = %v", err)
+		}
+		total += n
+		if n == 0 {
+			break
+		}
+	}
+
+	if total != 2 {
+		t.Errorf("total skipped = %d, want 2", total)
+	}
+
+	gotB, _ := stepRepo.GetByID(ctx, b.ID)
+	gotC, _ := stepRepo.GetByID(ctx, c.ID)
+	if gotB.Status != StepStatusSkipped {
+		t.Errorf("b.Status = %q, want skipped", gotB.Status)
+	}
+	if gotC.Status != StepStatusSkipped {
+		t.Errorf("c.Status = %q, want skipped", gotC.Status)
+	}
+}
+
+func TestBuildStepRepository_SkipNoFalsePositive(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{ProjectID: project.ID, CommitSHA: "abc123", Status: BuildStatusPending}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	lint := &BuildStep{BuildID: build.ID, Name: "lint", Image: &image, Status: StepStatusSuccess}
+	test := &BuildStep{BuildID: build.ID, Name: "test", Image: &image, Status: StepStatusWaiting}
+
+	if err := stepRepo.Create(ctx, lint); err != nil {
+		t.Fatalf("Create lint error = %v", err)
+	}
+	if err := stepRepo.Create(ctx, test); err != nil {
+		t.Fatalf("Create test error = %v", err)
+	}
+	if err := stepRepo.AddDependency(ctx, test.ID, lint.ID); err != nil {
+		t.Fatalf("AddDependency error = %v", err)
+	}
+
+	// All deps succeeded — should NOT skip
+	n, err := stepRepo.SkipDependentSteps(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("SkipDependentSteps() error = %v", err)
+	}
+	if n != 0 {
+		t.Errorf("skipped = %d, want 0", n)
+	}
+
+	got, _ := stepRepo.GetByID(ctx, test.ID)
+	if got.Status != StepStatusWaiting {
+		t.Errorf("test.Status = %q, want %q", got.Status, StepStatusWaiting)
+	}
+}
+
+func TestBuildStepRepository_CancelBuildSteps(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{ProjectID: project.ID, CommitSHA: "abc123", Status: BuildStatusRunning}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	// Create steps in various states
+	steps := []*BuildStep{
+		{BuildID: build.ID, Name: "pending", Image: &image, Status: StepStatusPending},
+		{BuildID: build.ID, Name: "waiting", Image: &image, Status: StepStatusWaiting},
+		{BuildID: build.ID, Name: "ready", Image: &image, Status: StepStatusReady},
+		{BuildID: build.ID, Name: "running", Image: &image, Status: StepStatusRunning},
+		{BuildID: build.ID, Name: "success", Image: &image, Status: StepStatusSuccess},
+	}
+	for _, s := range steps {
+		if err := stepRepo.Create(ctx, s); err != nil {
+			t.Fatalf("Create %s error = %v", s.Name, err)
+		}
+	}
+
+	n, err := stepRepo.CancelBuildSteps(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("CancelBuildSteps() error = %v", err)
+	}
+	// pending, waiting, ready should be cancelled (3); running and success untouched
+	if n != 3 {
+		t.Errorf("cancelled = %d, want 3", n)
+	}
+
+	// Verify running is still running
+	gotRunning, _ := stepRepo.GetByID(ctx, steps[3].ID)
+	if gotRunning.Status != StepStatusRunning {
+		t.Errorf("running.Status = %q, want %q", gotRunning.Status, StepStatusRunning)
+	}
+
+	// Verify success is still success
+	gotSuccess, _ := stepRepo.GetByID(ctx, steps[4].ID)
+	if gotSuccess.Status != StepStatusSuccess {
+		t.Errorf("success.Status = %q, want %q", gotSuccess.Status, StepStatusSuccess)
+	}
+}
+
+func TestBuildStepRepository_ResetStepsForWorker(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{ProjectID: project.ID, CommitSHA: "abc123", Status: BuildStatusRunning}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	// Two running steps for "stale-worker", one for "other-worker"
+	s1 := &BuildStep{BuildID: build.ID, Name: "s1", Image: &image, Status: StepStatusReady}
+	s2 := &BuildStep{BuildID: build.ID, Name: "s2", Image: &image, Status: StepStatusReady}
+	s3 := &BuildStep{BuildID: build.ID, Name: "s3", Image: &image, Status: StepStatusReady}
+	for _, s := range []*BuildStep{s1, s2, s3} {
+		if err := stepRepo.Create(ctx, s); err != nil {
+			t.Fatalf("Create error = %v", err)
+		}
+	}
+
+	// Mark as started by different workers
+	if err := stepRepo.SetStarted(ctx, s1.ID, "stale-worker"); err != nil {
+		t.Fatalf("SetStarted error = %v", err)
+	}
+	if err := stepRepo.SetStarted(ctx, s2.ID, "stale-worker"); err != nil {
+		t.Fatalf("SetStarted error = %v", err)
+	}
+	if err := stepRepo.SetStarted(ctx, s3.ID, "other-worker"); err != nil {
+		t.Fatalf("SetStarted error = %v", err)
+	}
+
+	if err := stepRepo.ResetStepsForWorker(ctx, "stale-worker"); err != nil {
+		t.Fatalf("ResetStepsForWorker() error = %v", err)
+	}
+
+	// s1, s2 should be reset to ready
+	got1, _ := stepRepo.GetByID(ctx, s1.ID)
+	got2, _ := stepRepo.GetByID(ctx, s2.ID)
+	got3, _ := stepRepo.GetByID(ctx, s3.ID)
+
+	if got1.Status != StepStatusReady {
+		t.Errorf("s1.Status = %q, want ready", got1.Status)
+	}
+	if got1.WorkerID != nil {
+		t.Errorf("s1.WorkerID = %v, want nil", got1.WorkerID)
+	}
+	if got1.StartedAt != nil {
+		t.Errorf("s1.StartedAt = %v, want nil", got1.StartedAt)
+	}
+	if got2.Status != StepStatusReady {
+		t.Errorf("s2.Status = %q, want ready", got2.Status)
+	}
+	// s3 should be untouched
+	if got3.Status != StepStatusRunning {
+		t.Errorf("s3.Status = %q, want running", got3.Status)
+	}
+}
+
 func TestBuildStep_GetTimeout(t *testing.T) {
 	// Default timeout
 	step := &BuildStep{}

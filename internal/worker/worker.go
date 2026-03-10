@@ -21,6 +21,7 @@ type stepRepo interface {
 	SetStarted(ctx context.Context, id int64, workerID string) error
 	SetFinished(ctx context.Context, id int64, status models.StepStatus, exitCode *int, logPath string) error
 	UpdateReadySteps(ctx context.Context, buildID int64) (int64, error)
+	SkipDependentSteps(ctx context.Context, buildID int64) (int64, error)
 	ListByBuild(ctx context.Context, buildID int64) ([]*models.BuildStep, error)
 }
 
@@ -285,13 +286,8 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 		log.Error("failed to set step finished", "error", err)
 	}
 
-	// Unblock dependents
-	if _, err := w.steps.UpdateReadySteps(ctx, step.BuildID); err != nil {
-		log.Error("failed to update ready steps", "error", err)
-	}
-
-	// Recalculate build status
-	w.recalcBuildStatus(ctx, build.ID, log)
+	// Skip failed dependents, unblock ready steps, recalculate build status
+	w.advanceBuild(ctx, build.ID, log)
 
 	// Update worker status to idle
 	_ = w.workers.UpdateStatus(ctx, w.id, models.WorkerStatusIdle, nil)
@@ -303,11 +299,27 @@ func (w *Worker) failStep(ctx context.Context, step *models.BuildStep, log *slog
 	if err := w.steps.SetFinished(ctx, step.ID, models.StepStatusFailure, nil, ""); err != nil {
 		log.Error("failed to mark step as failed", "error", err)
 	}
-	if _, err := w.steps.UpdateReadySteps(ctx, step.BuildID); err != nil {
-		log.Error("failed to update ready steps after failure", "error", err)
-	}
-	w.recalcBuildStatus(ctx, step.BuildID, log)
+	w.advanceBuild(ctx, step.BuildID, log)
 	_ = w.workers.UpdateStatus(ctx, w.id, models.WorkerStatusIdle, nil)
+}
+
+func (w *Worker) advanceBuild(ctx context.Context, buildID int64, log *slog.Logger) {
+	// Cascade skip any steps whose dependencies have failed
+	for {
+		n, err := w.steps.SkipDependentSteps(ctx, buildID)
+		if err != nil {
+			log.Error("failed to skip dependent steps", "error", err)
+			break
+		}
+		if n == 0 {
+			break
+		}
+	}
+	// Unblock steps whose dependencies all succeeded
+	if _, err := w.steps.UpdateReadySteps(ctx, buildID); err != nil {
+		log.Error("failed to update ready steps", "error", err)
+	}
+	w.recalcBuildStatus(ctx, buildID, log)
 }
 
 func (w *Worker) recalcBuildStatus(ctx context.Context, buildID int64, log *slog.Logger) {

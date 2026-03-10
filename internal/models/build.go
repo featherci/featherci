@@ -116,6 +116,7 @@ type BuildRepository interface {
 	GetNextBuildNumber(ctx context.Context, projectID int64) (int, error)
 	SetStarted(ctx context.Context, id int64) error
 	SetFinished(ctx context.Context, id int64, status BuildStatus) error
+	CancelBuild(ctx context.Context, id int64) error
 }
 
 // SQLiteBuildRepository implements BuildRepository using SQLite.
@@ -316,6 +317,24 @@ func (r *SQLiteBuildRepository) SetFinished(ctx context.Context, id int64, statu
 	now := time.Now()
 	query := `UPDATE builds SET status = ?, finished_at = ? WHERE id = ?`
 	result, err := r.db.ExecContext(ctx, query, status, now, id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// CancelBuild cancels a build if it is still in a non-terminal state.
+func (r *SQLiteBuildRepository) CancelBuild(ctx context.Context, id int64) error {
+	now := time.Now()
+	query := `UPDATE builds SET status = 'cancelled', finished_at = ? WHERE id = ? AND status IN ('pending', 'running')`
+	result, err := r.db.ExecContext(ctx, query, now, id)
 	if err != nil {
 		return err
 	}

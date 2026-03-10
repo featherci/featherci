@@ -32,6 +32,7 @@ type WorkerRepository interface {
 	UpdateHeartbeat(ctx context.Context, id string) error
 	UpdateStatus(ctx context.Context, id string, status WorkerStatus, currentStepID *int64) error
 	SetOffline(ctx context.Context, id string) error
+	ListStale(ctx context.Context, threshold time.Duration) ([]*Worker, error)
 }
 
 // SQLiteWorkerRepository implements WorkerRepository using SQLite.
@@ -76,4 +77,15 @@ func (r *SQLiteWorkerRepository) SetOffline(ctx context.Context, id string) erro
 	query := `UPDATE workers SET status = 'offline', current_step_id = NULL WHERE id = ?`
 	_, err := r.db.ExecContext(ctx, query, id)
 	return err
+}
+
+// ListStale returns workers whose last heartbeat is older than the threshold.
+func (r *SQLiteWorkerRepository) ListStale(ctx context.Context, threshold time.Duration) ([]*Worker, error) {
+	cutoff := time.Now().Add(-threshold)
+	query := `SELECT * FROM workers WHERE status != 'offline' AND last_heartbeat IS NOT NULL AND last_heartbeat < ?`
+	var workers []*Worker
+	if err := r.db.SelectContext(ctx, &workers, query, cutoff); err != nil {
+		return nil, err
+	}
+	return workers, nil
 }

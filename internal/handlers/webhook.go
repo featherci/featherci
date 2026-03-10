@@ -1,35 +1,70 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/featherci/featherci/internal/models"
 	"github.com/featherci/featherci/internal/webhook"
+	"github.com/featherci/featherci/internal/workflow"
 )
+
+// buildCreator creates builds from webhook events and parsed workflows.
+type buildCreator interface {
+	CreateBuildFromWebhook(ctx context.Context, project *models.Project, event *webhook.Event, wf *workflow.Workflow) (*models.Build, error)
+}
+
+// fileFetcher fetches file content from git provider APIs.
+type fileFetcher interface {
+	GetFileContent(ctx context.Context, provider, token, repoFullName, filePath, ref string) ([]byte, error)
+}
+
+// webhookTokenSource provides git access tokens for fetching workflow files.
+type webhookTokenSource interface {
+	TokenForProject(ctx context.Context, projectID int64) (string, error)
+}
+
+// workflowParser parses and validates workflow YAML.
+type workflowParser interface {
+	ParseAndValidate(content []byte) (*workflow.Workflow, error)
+}
 
 // WebhookHandler handles incoming webhook requests from Git providers.
 type WebhookHandler struct {
-	projects models.ProjectRepository
-	github   webhook.Handler
-	gitlab   webhook.Handler
-	gitea    webhook.Handler
-	logger   *slog.Logger
+	projects     models.ProjectRepository
+	github       webhook.Handler
+	gitlab       webhook.Handler
+	gitea        webhook.Handler
+	logger       *slog.Logger
+	buildCreator buildCreator
+	fileFetcher  fileFetcher
+	tokenSource  webhookTokenSource
+	parser       workflowParser
 }
 
 // NewWebhookHandler creates a new webhook handler.
 func NewWebhookHandler(
 	projects models.ProjectRepository,
 	logger *slog.Logger,
+	bc buildCreator,
+	ff fileFetcher,
+	ts webhookTokenSource,
+	p workflowParser,
 ) *WebhookHandler {
 	return &WebhookHandler{
-		projects: projects,
-		github:   webhook.NewGitHubHandler(),
-		gitlab:   webhook.NewGitLabHandler(),
-		gitea:    webhook.NewGiteaHandler(),
-		logger:   logger,
+		projects:     projects,
+		github:       webhook.NewGitHubHandler(),
+		gitlab:       webhook.NewGitLabHandler(),
+		gitea:        webhook.NewGiteaHandler(),
+		logger:       logger,
+		buildCreator: bc,
+		fileFetcher:  ff,
+		tokenSource:  ts,
+		parser:       p,
 	}
 }
 
@@ -165,30 +200,79 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, p
 		"sender", event.Sender,
 	)
 
-	// TODO: Create build and queue for execution
-	// This will be implemented when the Build model and worker system are ready
-	// For now, we just acknowledge the webhook
+	// Get token for fetching workflow file
+	token, err := h.tokenSource.TokenForProject(ctx, project.ID)
+	if err != nil {
+		h.logger.Error("failed to get token for project",
+			"project_id", project.ID,
+			"error", err,
+		)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch workflow file from repository
+	content, err := h.fileFetcher.GetFileContent(ctx, provider, token, project.FullName, workflow.DefaultWorkflowPath, event.CommitSHA)
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			h.logger.Debug("no workflow file found",
+				"project_id", project.ID,
+				"commit_sha", event.CommitSHA,
+			)
+			w.WriteHeader(http.StatusOK)
+			h.writeJSON(w, map[string]string{
+				"status":  "ignored",
+				"message": "no workflow file",
+			})
+			return
+		}
+		h.logger.Error("failed to fetch workflow file",
+			"project_id", project.ID,
+			"error", err,
+		)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Parse and validate workflow
+	wf, err := h.parser.ParseAndValidate(content)
+	if err != nil {
+		h.logger.Warn("invalid workflow file",
+			"project_id", project.ID,
+			"error", err,
+		)
+		w.WriteHeader(http.StatusOK)
+		h.writeJSON(w, map[string]string{
+			"status":  "ignored",
+			"message": "invalid workflow: " + err.Error(),
+		})
+		return
+	}
+
+	// Create build
+	build, err := h.buildCreator.CreateBuildFromWebhook(ctx, project, event, wf)
+	if err != nil {
+		h.logger.Error("failed to create build",
+			"project_id", project.ID,
+			"error", err,
+		)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	h.logger.Info("build created from webhook",
+		"project_id", project.ID,
+		"build_id", build.ID,
+		"build_number", build.BuildNumber,
+	)
 
 	w.WriteHeader(http.StatusOK)
-	response := map[string]interface{}{
-		"status":     "accepted",
-		"message":    "build will be triggered",
-		"project_id": project.ID,
-		"event_type": event.EventType,
-		"commit_sha": event.CommitSHA,
-	}
-
-	if event.Branch != "" {
-		response["branch"] = event.Branch
-	}
-	if event.Tag != "" {
-		response["tag"] = event.Tag
-	}
-	if event.PullRequest != nil {
-		response["pull_request"] = event.PullRequest.Number
-	}
-
-	h.writeJSON(w, response)
+	h.writeJSON(w, map[string]interface{}{
+		"status":       "accepted",
+		"message":      "build created",
+		"build_id":     build.ID,
+		"build_number": build.BuildNumber,
+	})
 }
 
 // writeJSON writes a JSON response.

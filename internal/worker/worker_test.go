@@ -56,6 +56,10 @@ func (m *mockStepRepo) UpdateReadySteps(_ context.Context, _ int64) (int64, erro
 	return 0, nil
 }
 
+func (m *mockStepRepo) SkipDependentSteps(_ context.Context, _ int64) (int64, error) {
+	return 0, nil
+}
+
 func (m *mockStepRepo) ListByBuild(_ context.Context, buildID int64) ([]*models.BuildStep, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

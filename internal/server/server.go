@@ -88,7 +88,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	authHandler := handlers.NewAuthHandler(providers, users, sessions, cfg)
 	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, builds, secrets, providers, tmpl, logger)
 	webhookHandler := handlers.NewWebhookHandler(projects, logger, buildCreator, fileFetcher, tokenSource, parser)
-	buildHandler := handlers.NewBuildHandler(projects, builds, steps, tmpl, logger)
+	buildHandler := handlers.NewBuildHandler(projects, builds, steps, projectUsers, tmpl, logger)
 	secretHandler := handlers.NewSecretHandler(secretService, projects, projectUsers, tmpl, logger)
 
 	return &Server{

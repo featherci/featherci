@@ -829,6 +829,78 @@ func TestBuildStepRepository_ResetStepsForWorker(t *testing.T) {
 	}
 }
 
+func TestBuildStepRepository_UpdateReadySteps_ApprovalSteps(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{
+		ProjectID: project.ID,
+		CommitSHA: "abc123",
+		Status:    BuildStatusPending,
+	}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	lint := &BuildStep{BuildID: build.ID, Name: "lint", Image: &image, Status: StepStatusReady}
+	test := &BuildStep{BuildID: build.ID, Name: "test", Image: &image, Status: StepStatusWaiting}
+	deploy := &BuildStep{BuildID: build.ID, Name: "deploy", Image: &image, Status: StepStatusWaiting, RequiresApproval: true}
+
+	if err := stepRepo.Create(ctx, lint); err != nil {
+		t.Fatalf("Create lint error = %v", err)
+	}
+	if err := stepRepo.Create(ctx, test); err != nil {
+		t.Fatalf("Create test error = %v", err)
+	}
+	if err := stepRepo.Create(ctx, deploy); err != nil {
+		t.Fatalf("Create deploy error = %v", err)
+	}
+
+	// test depends on lint, deploy depends on lint
+	if err := stepRepo.AddDependency(ctx, test.ID, lint.ID); err != nil {
+		t.Fatalf("AddDependency error = %v", err)
+	}
+	if err := stepRepo.AddDependency(ctx, deploy.ID, lint.ID); err != nil {
+		t.Fatalf("AddDependency error = %v", err)
+	}
+
+	// Mark lint as success
+	if err := stepRepo.UpdateStatus(ctx, lint.ID, StepStatusSuccess); err != nil {
+		t.Fatalf("UpdateStatus error = %v", err)
+	}
+
+	// UpdateReadySteps should transition test → ready, deploy → waiting_approval
+	updated, err := stepRepo.UpdateReadySteps(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("UpdateReadySteps() error = %v", err)
+	}
+	if updated != 2 {
+		t.Errorf("updated = %d, want 2", updated)
+	}
+
+	gotTest, err := stepRepo.GetByID(ctx, test.ID)
+	if err != nil {
+		t.Fatalf("GetByID(test) error = %v", err)
+	}
+	if gotTest.Status != StepStatusReady {
+		t.Errorf("test.Status = %q, want %q", gotTest.Status, StepStatusReady)
+	}
+
+	gotDeploy, err := stepRepo.GetByID(ctx, deploy.ID)
+	if err != nil {
+		t.Fatalf("GetByID(deploy) error = %v", err)
+	}
+	if gotDeploy.Status != StepStatusWaitingApproval {
+		t.Errorf("deploy.Status = %q, want %q", gotDeploy.Status, StepStatusWaitingApproval)
+	}
+}
+
 func TestBuildStep_GetTimeout(t *testing.T) {
 	// Default timeout
 	step := &BuildStep{}

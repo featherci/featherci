@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -34,11 +35,12 @@ type BuildShowPageData struct {
 
 // BuildHandler handles build-related HTTP requests.
 type BuildHandler struct {
-	projects  models.ProjectRepository
-	builds    models.BuildRepository
-	steps     models.BuildStepRepository
-	templates *templates.Engine
-	logger    *slog.Logger
+	projects     models.ProjectRepository
+	builds       models.BuildRepository
+	steps        models.BuildStepRepository
+	projectUsers models.ProjectUserRepository
+	templates    *templates.Engine
+	logger       *slog.Logger
 }
 
 // NewBuildHandler creates a new BuildHandler.
@@ -46,15 +48,17 @@ func NewBuildHandler(
 	projects models.ProjectRepository,
 	builds models.BuildRepository,
 	steps models.BuildStepRepository,
+	projectUsers models.ProjectUserRepository,
 	tmpl *templates.Engine,
 	logger *slog.Logger,
 ) *BuildHandler {
 	return &BuildHandler{
-		projects:  projects,
-		builds:    builds,
-		steps:     steps,
-		templates: tmpl,
-		logger:    logger,
+		projects:     projects,
+		builds:       builds,
+		steps:        steps,
+		projectUsers: projectUsers,
+		templates:    tmpl,
+		logger:       logger,
 	}
 }
 
@@ -439,4 +443,104 @@ func (h *BuildHandler) StepLog(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
+}
+
+// ApproveStep approves a step that is waiting for manual approval.
+// POST /projects/{namespace}/{name}/builds/{number}/steps/{stepID}/approve
+func (h *BuildHandler) ApproveStep(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	user := middleware.UserFromContext(ctx)
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	project, err := h.lookupProject(r)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get project", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify user has access to the project
+	canAccess, err := h.projectUsers.CanUserAccess(ctx, project.ID, user.ID)
+	if err != nil {
+		h.logger.Error("failed to check user access", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if !canAccess {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	numberStr := r.PathValue("number")
+	buildNumber, err := strconv.Atoi(numberStr)
+	if err != nil {
+		http.Error(w, "Bad Request: invalid build number", http.StatusBadRequest)
+		return
+	}
+
+	build, err := h.builds.GetByNumber(ctx, project.ID, buildNumber)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get build", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	stepID, err := strconv.ParseInt(r.PathValue("stepID"), 10, 64)
+	if err != nil {
+		http.Error(w, "Bad Request: invalid step ID", http.StatusBadRequest)
+		return
+	}
+
+	step, err := h.steps.GetByID(ctx, stepID)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get step", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify step belongs to this build
+	if step.BuildID != build.ID {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	// Verify step is waiting for approval
+	if step.Status != models.StepStatusWaitingApproval {
+		http.Error(w, "Bad Request: step is not waiting for approval", http.StatusBadRequest)
+		return
+	}
+
+	// Approve the step (transitions to ready)
+	if err := h.steps.SetApproval(ctx, stepID, user.ID); err != nil {
+		h.logger.Error("failed to approve step", "step_id", stepID, "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Unblock any dependents
+	if _, err := h.steps.UpdateReadySteps(ctx, build.ID); err != nil {
+		h.logger.Error("failed to update ready steps after approval", "build_id", build.ID, "error", err)
+	}
+
+	h.logger.Info("step approved", "step_id", stepID, "approved_by", user.ID)
+
+	// Redirect back to build page
+	namespace := r.PathValue("namespace")
+	name := r.PathValue("name")
+	http.Redirect(w, r, fmt.Sprintf("/projects/%s/%s/builds/%d", namespace, name, buildNumber), http.StatusSeeOther)
 }

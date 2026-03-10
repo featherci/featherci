@@ -12,7 +12,12 @@ type WorkspaceManager struct {
 }
 
 // NewWorkspaceManager creates a new WorkspaceManager with the given base path.
+// The base path is resolved to an absolute path so that Docker bind mounts work correctly.
 func NewWorkspaceManager(basePath string) *WorkspaceManager {
+	abs, err := filepath.Abs(basePath)
+	if err == nil {
+		basePath = abs
+	}
 	return &WorkspaceManager{basePath: basePath}
 }
 

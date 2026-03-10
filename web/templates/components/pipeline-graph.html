@@ -24,62 +24,87 @@
           rx="12" fill="white" stroke="#E5E7EB" stroke-width="1"/>
 
     {{range .Nodes}}
-    {{$cx := add .X 10}}
+    {{$cx := add .X 12}}
     {{$cy := add .Y 18}}
     {{$color := statusColor .Status}}
     {{$icon := statusIcon .Status}}
 
     <!-- Status icon background -->
-    <circle cx="{{$cx}}" cy="{{$cy}}" r="8"
+    <circle cx="{{$cx}}" cy="{{$cy}}" r="10"
       fill="{{if eq $color "green"}}#22c55e{{else if eq $color "red"}}#ef4444{{else if eq $color "blue"}}#3b82f6{{else if eq $color "yellow"}}#eab308{{else if eq $color "purple"}}#a855f7{{else}}#9ca3af{{end}}"
       opacity="0.15"/>
 
     {{if eq $icon "check"}}
-    <polyline points="{{sub $cx 3}},{{$cy}} {{sub $cx 1}},{{add $cy 3}} {{add $cx 4}},{{sub $cy 3}}"
-      fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="{{sub $cx 4}},{{$cy}} {{sub $cx 1}},{{add $cy 4}} {{add $cx 5}},{{sub $cy 4}}"
+      fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
     {{else if eq $icon "x"}}
-    <line x1="{{sub $cx 3}}" y1="{{sub $cy 3}}" x2="{{add $cx 3}}" y2="{{add $cy 3}}"
-      stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
-    <line x1="{{add $cx 3}}" y1="{{sub $cy 3}}" x2="{{sub $cx 3}}" y2="{{add $cy 3}}"
-      stroke="#ef4444" stroke-width="2" stroke-linecap="round"/>
+    <line x1="{{sub $cx 4}}" y1="{{sub $cy 4}}" x2="{{add $cx 4}}" y2="{{add $cy 4}}"
+      stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="{{add $cx 4}}" y1="{{sub $cy 4}}" x2="{{sub $cx 4}}" y2="{{add $cy 4}}"
+      stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
     {{else if eq $icon "spinner"}}
-    <circle cx="{{$cx}}" cy="{{$cy}}" r="5" fill="none"
-      stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="8 6">
+    <circle cx="{{$cx}}" cy="{{$cy}}" r="6" fill="none"
+      stroke="#3b82f6" stroke-width="2" stroke-dasharray="10 7">
       <animateTransform attributeName="transform" type="rotate"
         values="0 {{$cx}} {{$cy}};360 {{$cx}} {{$cy}}"
         dur="1s" repeatCount="indefinite"/>
     </circle>
     {{else if eq $icon "clock"}}
-    <circle cx="{{$cx}}" cy="{{$cy}}" r="5" fill="none" stroke="#eab308" stroke-width="1.5"/>
-    <line x1="{{$cx}}" y1="{{sub $cy 3}}" x2="{{$cx}}" y2="{{$cy}}"
-      stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
-    <line x1="{{$cx}}" y1="{{$cy}}" x2="{{add $cx 3}}" y2="{{$cy}}"
-      stroke="#eab308" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="{{$cx}}" cy="{{$cy}}" r="6" fill="none" stroke="#eab308" stroke-width="2"/>
+    <line x1="{{$cx}}" y1="{{sub $cy 4}}" x2="{{$cx}}" y2="{{$cy}}"
+      stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
+    <line x1="{{$cx}}" y1="{{$cy}}" x2="{{add $cx 3}}" y2="{{add $cy 1}}"
+      stroke="#eab308" stroke-width="2" stroke-linecap="round"/>
     {{else if eq $icon "slash"}}
-    <circle cx="{{$cx}}" cy="{{$cy}}" r="5" fill="none" stroke="#9ca3af" stroke-width="1.5"/>
-    <line x1="{{sub $cx 3}}" y1="{{add $cy 3}}" x2="{{add $cx 3}}" y2="{{sub $cy 3}}"
-      stroke="#9ca3af" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="{{$cx}}" cy="{{$cy}}" r="6" fill="none" stroke="#9ca3af" stroke-width="2"/>
+    <line x1="{{sub $cx 4}}" y1="{{add $cy 4}}" x2="{{add $cx 4}}" y2="{{sub $cy 4}}"
+      stroke="#9ca3af" stroke-width="2" stroke-linecap="round"/>
     {{else if eq $icon "pause"}}
-    <line x1="{{sub $cx 2}}" y1="{{sub $cy 4}}" x2="{{sub $cx 2}}" y2="{{add $cy 4}}"
-      stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
-    <line x1="{{add $cx 2}}" y1="{{sub $cy 4}}" x2="{{add $cx 2}}" y2="{{add $cy 4}}"
-      stroke="#a855f7" stroke-width="2" stroke-linecap="round"/>
+    <line x1="{{sub $cx 3}}" y1="{{sub $cy 5}}" x2="{{sub $cx 3}}" y2="{{add $cy 5}}"
+      stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="{{add $cx 3}}" y1="{{sub $cy 5}}" x2="{{add $cx 3}}" y2="{{add $cy 5}}"
+      stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/>
     {{else}}
-    <circle cx="{{$cx}}" cy="{{$cy}}" r="5" fill="none" stroke="#9ca3af" stroke-width="1.5"/>
+    <circle cx="{{$cx}}" cy="{{$cy}}" r="6" fill="none" stroke="#9ca3af" stroke-width="2"/>
     {{end}}
 
     <!-- Step name -->
-    <text x="{{add .X 24}}" y="{{add .Y 22}}" font-family="system-ui, -apple-system, sans-serif"
+    <text x="{{add .X 28}}" y="{{add .Y 22}}" font-family="system-ui, -apple-system, sans-serif"
       font-size="13" fill="#111827">{{.Name}}</text>
 
-    <!-- Duration -->
-    {{if .Duration}}
-    <text x="{{add .X 220}}" y="{{add .Y 22}}" font-family="system-ui, -apple-system, sans-serif"
+    <!-- Right side: approve button or approved check or duration -->
+    {{if eq .Status "waiting_approval"}}
+    {{$bx := add .X 210}}
+    {{$by := add .Y 18}}
+    <g style="cursor:pointer" onclick="document.getElementById('approve-form-{{.ID}}').submit()">
+      <title>Approve this step</title>
+      <circle cx="{{$bx}}" cy="{{$by}}" r="12" fill="#a855f7" opacity="0.1">
+        <animate attributeName="opacity" values="0.1;0.25;0.1" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Thumbs-up: use a viewBox-based icon scaled into position -->
+      <svg x="{{sub $bx 8}}" y="{{sub $by 8}}" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 22V11l3-8a2 2 0 0 1 2-1c1 0 2 1 2 2v5h5a2 2 0 0 1 2 2.2l-1.5 7A2 2 0 0 1 17.5 20H7z"/>
+        <path d="M7 11H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>
+      </svg>
+    </g>
+    {{else if .Approved}}
+    {{$bx := add .X 210}}
+    {{$by := add .Y 18}}
+    <circle cx="{{$bx}}" cy="{{$by}}" r="10" fill="#22c55e" opacity="0.15"/>
+    <polyline points="{{sub $bx 4}},{{$by}} {{sub $bx 1}},{{add $by 4}} {{add $bx 5}},{{sub $by 4}}"
+      fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    {{else if .Duration}}
+    <text x="{{add .X 224}}" y="{{add .Y 22}}" font-family="system-ui, -apple-system, sans-serif"
       font-size="11" fill="#9ca3af" text-anchor="end">{{.Duration}}</text>
     {{end}}
     {{end}}
     {{end}}
   </svg>
+  {{range .Build.Steps}}
+  {{if eq (printf "%s" .Status) "waiting_approval"}}
+  <form id="approve-form-{{.ID}}" method="POST" action="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/builds/{{$.Build.BuildNumber}}/steps/{{.ID}}/approve" style="display:none"></form>
+  {{end}}
+  {{end}}
 </div>
 {{end}}
 {{end}}

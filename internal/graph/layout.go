@@ -42,11 +42,13 @@ type Group struct {
 
 // Node is a single build step within a group.
 type Node struct {
-	ID       int64
-	Name     string
-	Status   string
-	Duration string
-	X, Y     int // absolute position within SVG
+	ID               int64
+	Name             string
+	Status           string
+	Duration         string
+	RequiresApproval bool
+	Approved         bool // true if ApprovedBy is set (step was approved)
+	X, Y             int  // absolute position within SVG
 }
 
 // Edge connects the right side of one group to the left side of another.
@@ -129,10 +131,12 @@ func Calculate(steps []*models.BuildStep) *Layout {
 		for i, s := range ss {
 			nodeY := groupPadY + i*(nodeHeight+nodeGapY)
 			g.Nodes = append(g.Nodes, Node{
-				ID:       s.ID,
-				Name:     truncate(s.Name, 24),
-				Status:   string(s.Status),
-				Duration: formatStepDuration(s),
+				ID:               s.ID,
+				Name:             truncate(s.Name, 24),
+				Status:           string(s.Status),
+				Duration:         formatStepDuration(s),
+				RequiresApproval: s.RequiresApproval,
+				Approved:         s.ApprovedBy != nil,
 			})
 			// Absolute Y will be set after vertical centering; store relative for now
 			_ = nodeY

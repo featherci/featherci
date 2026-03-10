@@ -104,6 +104,8 @@ func (s *Server) setupRoutes() http.Handler {
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.Cancel)))
 	mux.Handle("GET /projects/{namespace}/{name}/builds/{number}/steps/{stepID}/log",
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.StepLog)))
+	mux.Handle("POST /projects/{namespace}/{name}/builds/{number}/steps/{stepID}/approve",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.ApproveStep)))
 
 	// Secrets
 	mux.Handle("GET /projects/{namespace}/{name}/secrets",

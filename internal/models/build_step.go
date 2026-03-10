@@ -321,11 +321,44 @@ func (r *SQLiteBuildStepRepository) ListByBuild(ctx context.Context, buildID int
 	if err != nil {
 		return nil, err
 	}
+
+	// Collect approved_by user IDs
+	userIDs := make(map[int64]bool)
 	for _, step := range steps {
 		if err := step.DeserializeJSON(); err != nil {
 			return nil, err
 		}
+		if step.ApprovedBy != nil {
+			userIDs[*step.ApprovedBy] = true
+		}
 	}
+
+	// Load approved-by users in one query
+	if len(userIDs) > 0 {
+		ids := make([]int64, 0, len(userIDs))
+		for id := range userIDs {
+			ids = append(ids, id)
+		}
+		usersQuery, args, err := sqlx.In(`SELECT * FROM users WHERE id IN (?)`, ids)
+		if err != nil {
+			return nil, err
+		}
+		usersQuery = r.db.Rebind(usersQuery)
+		var users []*User
+		if err := r.db.SelectContext(ctx, &users, usersQuery, args...); err != nil {
+			return nil, err
+		}
+		userMap := make(map[int64]*User, len(users))
+		for _, u := range users {
+			userMap[u.ID] = u
+		}
+		for _, step := range steps {
+			if step.ApprovedBy != nil {
+				step.ApprovedByUser = userMap[*step.ApprovedBy]
+			}
+		}
+	}
+
 	return steps, nil
 }
 
@@ -507,26 +540,43 @@ func (r *SQLiteBuildStepRepository) GetDependencies(ctx context.Context, stepID 
 	return steps, nil
 }
 
-// UpdateReadySteps transitions steps from 'waiting' to 'ready' when all their dependencies are successful.
-// Returns the number of steps updated.
+// UpdateReadySteps transitions steps from 'waiting' to 'ready' (or 'waiting_approval' for approval steps)
+// when all their dependencies are successful. Returns the number of steps updated.
 func (r *SQLiteBuildStepRepository) UpdateReadySteps(ctx context.Context, buildID int64) (int64, error) {
-	query := `
-		UPDATE build_steps
-		SET status = 'ready'
-		WHERE build_id = ?
-		  AND status = 'waiting'
-		  AND NOT EXISTS (
-			  SELECT 1 FROM step_dependencies sd
-			  JOIN build_steps dep ON sd.depends_on_step_id = dep.id
-			  WHERE sd.step_id = build_steps.id
-			    AND dep.status NOT IN ('success')
-		  )
+	depsMetCondition := `
+		build_id = ?
+		AND status = 'waiting'
+		AND NOT EXISTS (
+			SELECT 1 FROM step_dependencies sd
+			JOIN build_steps dep ON sd.depends_on_step_id = dep.id
+			WHERE sd.step_id = build_steps.id
+			  AND dep.status NOT IN ('success')
+		)
 	`
-	result, err := r.db.ExecContext(ctx, query, buildID)
+
+	// Non-approval steps → ready
+	readyQuery := `UPDATE build_steps SET status = 'ready' WHERE ` + depsMetCondition + ` AND requires_approval = false`
+	result, err := r.db.ExecContext(ctx, readyQuery, buildID)
 	if err != nil {
 		return 0, err
 	}
-	return result.RowsAffected()
+	readyCount, err := result.RowsAffected()
+	if err != nil {
+		return 0, err
+	}
+
+	// Approval steps → waiting_approval
+	approvalQuery := `UPDATE build_steps SET status = 'waiting_approval' WHERE ` + depsMetCondition + ` AND requires_approval = true`
+	result, err = r.db.ExecContext(ctx, approvalQuery, buildID)
+	if err != nil {
+		return readyCount, err
+	}
+	approvalCount, err := result.RowsAffected()
+	if err != nil {
+		return readyCount, err
+	}
+
+	return readyCount + approvalCount, nil
 }
 
 // SkipDependentSteps transitions waiting steps to skipped when any dependency has failed, been cancelled, or skipped.

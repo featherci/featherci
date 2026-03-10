@@ -25,6 +25,7 @@ func setupBuildTestDB(t *testing.T) *sqlx.DB {
 			full_name TEXT NOT NULL,
 			clone_url TEXT NOT NULL,
 			webhook_secret TEXT,
+			webhook_id TEXT DEFAULT '',
 			default_branch TEXT DEFAULT 'main',
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,

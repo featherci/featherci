@@ -18,7 +18,8 @@
       "Bash(docker run:*)",
       "Bash(docker images:*)",
       "Bash(docker rmi:*)",
-      "Bash(docker rm:*)"
+      "Bash(docker rm:*)",
+      "Bash(go run:*)"
     ]
   }
 }

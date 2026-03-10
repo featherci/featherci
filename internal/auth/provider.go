@@ -38,13 +38,14 @@ type UserInfo struct {
 
 // Repository contains information about a git repository.
 type Repository struct {
-	ID        string // Provider-specific repository ID
-	FullName  string // Full name (namespace/name)
-	Namespace string // Owner/organization name
-	Name      string // Repository name
-	CloneURL  string // HTTPS clone URL
-	SSHURL    string // SSH clone URL
-	Private   bool   // Whether the repository is private
-	Admin     bool   // Whether the user has admin access
-	Push      bool   // Whether the user has push access
+	ID            string // Provider-specific repository ID
+	FullName      string // Full name (namespace/name)
+	Namespace     string // Owner/organization name
+	Name          string // Repository name
+	CloneURL      string // HTTPS clone URL
+	SSHURL        string // SSH clone URL
+	DefaultBranch string // Default branch (e.g., "main" or "master")
+	Private       bool   // Whether the repository is private
+	Admin         bool   // Whether the user has admin access
+	Push          bool   // Whether the user has push access
 }

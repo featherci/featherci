@@ -102,10 +102,11 @@ func (p *GitHubProvider) GetRepositories(ctx context.Context, token *oauth2.Toke
 			Owner    struct {
 				Login string `json:"login"`
 			} `json:"owner"`
-			CloneURL    string `json:"clone_url"`
-			SSHURL      string `json:"ssh_url"`
-			Private     bool   `json:"private"`
-			Permissions struct {
+			CloneURL      string `json:"clone_url"`
+			SSHURL        string `json:"ssh_url"`
+			DefaultBranch string `json:"default_branch"`
+			Private       bool   `json:"private"`
+			Permissions   struct {
 				Admin bool `json:"admin"`
 				Push  bool `json:"push"`
 				Pull  bool `json:"pull"`
@@ -124,15 +125,16 @@ func (p *GitHubProvider) GetRepositories(ctx context.Context, token *oauth2.Toke
 
 		for _, r := range ghRepos {
 			repos = append(repos, Repository{
-				ID:        strconv.FormatInt(r.ID, 10),
-				FullName:  r.FullName,
-				Namespace: r.Owner.Login,
-				Name:      r.Name,
-				CloneURL:  r.CloneURL,
-				SSHURL:    r.SSHURL,
-				Private:   r.Private,
-				Admin:     r.Permissions.Admin,
-				Push:      r.Permissions.Push,
+				ID:            strconv.FormatInt(r.ID, 10),
+				FullName:      r.FullName,
+				Namespace:     r.Owner.Login,
+				Name:          r.Name,
+				CloneURL:      r.CloneURL,
+				SSHURL:        r.SSHURL,
+				DefaultBranch: r.DefaultBranch,
+				Private:       r.Private,
+				Admin:         r.Permissions.Admin,
+				Push:          r.Permissions.Push,
 			})
 		}
 

@@ -91,7 +91,7 @@ func (s *StatusService) PostBuildStatus(ctx context.Context, project *models.Pro
 		Repo:      repo,
 		CommitSHA: build.CommitSHA,
 		State:     mapBuildStatus(build.Status),
-		TargetURL: fmt.Sprintf("%s/projects/%d/builds/%d", s.baseURL, project.ID, build.BuildNumber),
+		TargetURL: fmt.Sprintf("%s/projects/%s/%s/builds/%d", s.baseURL, project.Namespace, project.Name, build.BuildNumber),
 		Context:   "featherci",
 	}
 
@@ -111,6 +111,71 @@ func (s *StatusService) PostBuildStatus(ctx context.Context, project *models.Pro
 		"commit", build.CommitSHA[:8],
 		"state", opts.State,
 	)
+}
+
+// PostStepStatus posts a commit status for an individual build step.
+// The context name is "featherci/stepName" so each step appears separately on the commit.
+func (s *StatusService) PostStepStatus(ctx context.Context, project *models.Project, build *models.Build, stepName string, stepStatus models.StepStatus) {
+	poster, ok := s.posters[project.Provider]
+	if !ok {
+		s.logger.Warn("no status poster for provider", "provider", project.Provider)
+		return
+	}
+
+	token, err := s.tokens.TokenForProject(ctx, project.ID)
+	if err != nil {
+		s.logger.Error("failed to get token for step status post", "project_id", project.ID, "error", err)
+		return
+	}
+
+	owner, repo := splitFullName(project.FullName)
+
+	state := mapStepStatus(stepStatus)
+	opts := StatusOptions{
+		Owner:     owner,
+		Repo:      repo,
+		CommitSHA: build.CommitSHA,
+		State:     state,
+		TargetURL: fmt.Sprintf("%s/projects/%s/%s/builds/%d", s.baseURL, project.Namespace, project.Name, build.BuildNumber),
+		Context:   "featherci/" + stepName,
+	}
+
+	if err := poster.PostStatus(ctx, token, opts); err != nil {
+		s.logger.Error("failed to post step status",
+			"provider", project.Provider,
+			"step", stepName,
+			"state", state,
+			"error", err,
+		)
+		return
+	}
+
+	s.logger.Debug("posted step status",
+		"provider", project.Provider,
+		"commit", build.CommitSHA[:8],
+		"step", stepName,
+		"state", state,
+	)
+}
+
+// mapStepStatus converts a step status to a normalized commit state.
+func mapStepStatus(s models.StepStatus) CommitState {
+	switch s {
+	case models.StepStatusPending, models.StepStatusWaiting, models.StepStatusReady, models.StepStatusWaitingApproval:
+		return StatePending
+	case models.StepStatusRunning:
+		return StateRunning
+	case models.StepStatusSuccess:
+		return StateSuccess
+	case models.StepStatusFailure:
+		return StateFailure
+	case models.StepStatusSkipped:
+		return StateSuccess // Skipped is not a failure
+	case models.StepStatusCancelled:
+		return StateCancelled
+	default:
+		return StatePending
+	}
 }
 
 // mapBuildStatus converts a FeatherCI build status to a normalized commit state.

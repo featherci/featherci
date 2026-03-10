@@ -218,6 +218,8 @@ func (m *mockWorkspace) Create(projectID, buildID int64) (string, error) {
 type mockStatusPoster struct{}
 
 func (m *mockStatusPoster) PostBuildStatus(_ context.Context, _ *models.Project, _ *models.Build) {}
+func (m *mockStatusPoster) PostStepStatus(_ context.Context, _ *models.Project, _ *models.Build, _ string, _ models.StepStatus) {
+}
 
 // --- Helpers ---
 

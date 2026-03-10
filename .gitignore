@@ -43,3 +43,12 @@ coverage.html
 tmp/
 *.tmp
 *.log
+
+# Test application (pushed to separate repo for integration testing)
+testapp/
+
+# Release artifacts
+dist/
+
+# Workspaces (build data)
+workspaces/

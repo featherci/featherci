@@ -268,9 +268,6 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, p
 		return
 	}
 
-	// Post pending commit status (fire-and-forget)
-	go h.statusService.PostBuildStatus(context.Background(), project, build)
-
 	h.logger.Info("build created from webhook",
 		"project_id", project.ID,
 		"build_id", build.ID,

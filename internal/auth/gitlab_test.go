@@ -61,7 +61,7 @@ func TestGitLabProvider_Endpoints(t *testing.T) {
 func TestGitLabProvider_Scopes(t *testing.T) {
 	p := NewGitLabProvider("id", "secret", "http://localhost/callback", "https://gitlab.com")
 
-	expectedScopes := []string{"read_user", "read_api", "read_repository"}
+	expectedScopes := []string{"read_user", "api", "read_repository"}
 	if len(p.config.Scopes) != len(expectedScopes) {
 		t.Errorf("Scopes count = %d, want %d", len(p.config.Scopes), len(expectedScopes))
 	}

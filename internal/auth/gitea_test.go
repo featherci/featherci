@@ -55,7 +55,7 @@ func TestGiteaProvider_Endpoints(t *testing.T) {
 func TestGiteaProvider_Scopes(t *testing.T) {
 	p := NewGiteaProvider("id", "secret", "http://localhost/callback", "https://gitea.example.com")
 
-	expectedScopes := []string{"read:user", "read:repository"}
+	expectedScopes := []string{"read:user", "read:repository", "write:repository"}
 	if len(p.config.Scopes) != len(expectedScopes) {
 		t.Errorf("Scopes count = %d, want %d", len(p.config.Scopes), len(expectedScopes))
 	}

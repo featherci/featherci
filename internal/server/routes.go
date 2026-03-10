@@ -92,6 +92,7 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.Handle("GET /projects/{namespace}/{name}/settings", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Settings)))
 	mux.Handle("POST /projects/{namespace}/{name}/settings", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Update)))
 	mux.Handle("POST /projects/{namespace}/{name}/delete", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Delete)))
+	mux.Handle("POST /projects/{namespace}/{name}/trigger", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.TriggerBuild)))
 
 	// Builds
 	mux.Handle("GET /projects/{namespace}/{name}/builds",

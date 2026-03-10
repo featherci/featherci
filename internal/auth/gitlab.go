@@ -29,7 +29,7 @@ func NewGitLabProvider(clientID, clientSecret, callbackURL, baseURL string) *Git
 			ClientID:     clientID,
 			ClientSecret: clientSecret,
 			RedirectURL:  callbackURL,
-			Scopes:       []string{"read_user", "read_api", "read_repository"},
+			Scopes:       []string{"read_user", "api", "read_repository"},
 			Endpoint: oauth2.Endpoint{
 				AuthURL:  baseURL + "/oauth/authorize",
 				TokenURL: baseURL + "/oauth/token",
@@ -113,6 +113,7 @@ func (p *GitLabProvider) GetRepositories(ctx context.Context, token *oauth2.Toke
 			} `json:"namespace"`
 			HTTPURLToRepo string `json:"http_url_to_repo"`
 			SSHURLToRepo  string `json:"ssh_url_to_repo"`
+			DefaultBranch string `json:"default_branch"`
 			Visibility    string `json:"visibility"`
 			Permissions   struct {
 				ProjectAccess *struct {
@@ -145,15 +146,16 @@ func (p *GitLabProvider) GetRepositories(ctx context.Context, token *oauth2.Toke
 			}
 
 			repos = append(repos, Repository{
-				ID:        strconv.FormatInt(proj.ID, 10),
-				FullName:  proj.PathWithNamespace,
-				Namespace: proj.Namespace.Path,
-				Name:      proj.Path,
-				CloneURL:  proj.HTTPURLToRepo,
-				SSHURL:    proj.SSHURLToRepo,
-				Private:   proj.Visibility != "public",
-				Admin:     accessLevel >= 40, // Maintainer or Owner
-				Push:      accessLevel >= 30, // Developer or above
+				ID:            strconv.FormatInt(proj.ID, 10),
+				FullName:      proj.PathWithNamespace,
+				Namespace:     proj.Namespace.Path,
+				Name:          proj.Path,
+				CloneURL:      proj.HTTPURLToRepo,
+				SSHURL:        proj.SSHURLToRepo,
+				DefaultBranch: proj.DefaultBranch,
+				Private:       proj.Visibility != "public",
+				Admin:         accessLevel >= 40, // Maintainer or Owner
+				Push:          accessLevel >= 30, // Developer or above
 			})
 		}
 

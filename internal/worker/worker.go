@@ -72,6 +72,7 @@ type workspaceManager interface {
 // statusPoster posts commit statuses to git providers.
 type statusPoster interface {
 	PostBuildStatus(ctx context.Context, project *models.Project, build *models.Build)
+	PostStepStatus(ctx context.Context, project *models.Project, build *models.Build, stepName string, stepStatus models.StepStatus)
 }
 
 // Config holds worker configuration.
@@ -253,15 +254,18 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 		return
 	}
 
-	// If build is pending, mark it started
+	// If build is pending, mark it started and post initial statuses for all steps
 	if build.Status == models.BuildStatusPending {
 		if err := w.builds.SetStarted(ctx, build.ID); err != nil {
 			log.Error("failed to start build", "error", err)
 		}
-		// Post running commit status (fire-and-forget)
-		runningBuild := *build
-		runningBuild.Status = models.BuildStatusRunning
-		go w.status.PostBuildStatus(context.Background(), project, &runningBuild)
+		// Post pending status for all steps so they appear on the commit
+		allSteps, err := w.steps.ListByBuild(ctx, build.ID)
+		if err == nil {
+			for _, s := range allSteps {
+				go w.status.PostStepStatus(context.Background(), project, build, s.Name, models.StepStatusPending)
+			}
+		}
 	}
 
 	// Set up workspace: reuse if already exists
@@ -269,7 +273,7 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 	if _, statErr := os.Stat(wsPath); os.IsNotExist(statErr) {
 		if _, err := w.workspace.Create(project.ID, build.ID); err != nil {
 			log.Error("failed to create workspace", "error", err)
-			w.failStep(ctx, step, log)
+			w.failStepWithContext(ctx, step, project, build, log)
 			return
 		}
 
@@ -277,20 +281,20 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 		token, err := w.tokens.TokenForProject(ctx, project.ID)
 		if err != nil {
 			log.Error("failed to get token", "error", err)
-			w.failStep(ctx, step, log)
+			w.failStepWithContext(ctx, step, project, build, log)
 			return
 		}
 
 		// Clone and checkout
 		if err := w.git.Clone(ctx, project.CloneURL, token, project.Provider, wsPath); err != nil {
 			log.Error("clone failed", "error", err)
-			w.failStep(ctx, step, log)
+			w.failStepWithContext(ctx, step, project, build, log)
 			return
 		}
 
 		if err := w.git.Checkout(ctx, wsPath, build.CommitSHA); err != nil {
 			log.Error("checkout failed", "error", err)
-			w.failStep(ctx, step, log)
+			w.failStepWithContext(ctx, step, project, build, log)
 			return
 		}
 	}
@@ -325,6 +329,9 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 	// Update worker status to busy
 	_ = w.workers.UpdateStatus(ctx, w.id, models.WorkerStatusBusy, &step.ID)
 
+	// Post step running status
+	go w.status.PostStepStatus(context.Background(), project, build, step.Name, models.StepStatusRunning)
+
 	// Run step
 	log.Info("running step", "name", step.Name)
 	result := w.runner.RunStep(ctx, step, wsPath)
@@ -333,6 +340,9 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 	if err := w.steps.SetFinished(ctx, step.ID, result.Status, result.ExitCode, result.LogPath); err != nil {
 		log.Error("failed to set step finished", "error", err)
 	}
+
+	// Post step finished status
+	go w.status.PostStepStatus(context.Background(), project, build, step.Name, result.Status)
 
 	// Skip failed dependents, unblock ready steps, recalculate build status
 	w.advanceBuild(ctx, build.ID, log)
@@ -344,8 +354,15 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 }
 
 func (w *Worker) failStep(ctx context.Context, step *models.BuildStep, log *slog.Logger) {
+	w.failStepWithContext(ctx, step, nil, nil, log)
+}
+
+func (w *Worker) failStepWithContext(ctx context.Context, step *models.BuildStep, project *models.Project, build *models.Build, log *slog.Logger) {
 	if err := w.steps.SetFinished(ctx, step.ID, models.StepStatusFailure, nil, ""); err != nil {
 		log.Error("failed to mark step as failed", "error", err)
+	}
+	if project != nil && build != nil {
+		go w.status.PostStepStatus(context.Background(), project, build, step.Name, models.StepStatusFailure)
 	}
 	w.advanceBuild(ctx, step.BuildID, log)
 	_ = w.workers.UpdateStatus(ctx, w.id, models.WorkerStatusIdle, nil)
@@ -391,15 +408,7 @@ func (w *Worker) recalcBuildStatus(ctx context.Context, buildID int64, log *slog
 			if err := w.builds.SetFinished(ctx, buildID, newStatus); err != nil {
 				log.Error("failed to finish build", "error", err)
 			}
-			// Post final commit status (fire-and-forget)
-			project, projErr := w.projects.GetByID(ctx, build.ProjectID)
-			if projErr != nil {
-				log.Error("failed to load project for status post", "error", projErr)
-			} else {
-				finishedBuild := *build
-				finishedBuild.Status = newStatus
-				go w.status.PostBuildStatus(context.Background(), project, &finishedBuild)
-			}
+			// Step-level statuses are posted individually; no overall status needed
 		} else {
 			if err := w.builds.UpdateStatus(ctx, buildID, newStatus); err != nil {
 				log.Error("failed to update build status", "error", err)

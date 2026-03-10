@@ -10,22 +10,43 @@ import (
 	"time"
 
 	"github.com/featherci/featherci/internal/auth"
+	"github.com/featherci/featherci/internal/gitclient"
 	"github.com/featherci/featherci/internal/middleware"
 	"github.com/featherci/featherci/internal/models"
+	"github.com/featherci/featherci/internal/services"
+	"github.com/featherci/featherci/internal/status"
 	"github.com/featherci/featherci/internal/templates"
+	"github.com/featherci/featherci/internal/workflow"
 	"golang.org/x/oauth2"
 )
 
+// webhookManager is the interface for webhook registration.
+type webhookManager interface {
+	ShouldRegister() bool
+	RegisterWebhook(ctx context.Context, provider, token, repoFullName, secret string) (string, error)
+}
+
+// tokenSource provides access tokens for git provider API calls.
+type tokenSource interface {
+	TokenForProject(ctx context.Context, projectID int64) (string, error)
+}
+
 // ProjectHandler handles project-related HTTP endpoints.
 type ProjectHandler struct {
-	projects     models.ProjectRepository
-	projectUsers models.ProjectUserRepository
-	users        models.UserRepository
-	builds       models.BuildRepository
-	secrets      models.SecretRepository
-	providers    *auth.Registry
-	templates    *templates.Engine
-	logger       *slog.Logger
+	projects       models.ProjectRepository
+	projectUsers   models.ProjectUserRepository
+	users          models.UserRepository
+	builds         models.BuildRepository
+	secrets        models.SecretRepository
+	providers      *auth.Registry
+	templates      *templates.Engine
+	logger         *slog.Logger
+	webhookManager webhookManager
+	fileFetcher    *gitclient.FileContentFetcher
+	tokenSource    tokenSource
+	buildCreator   *services.BuildCreator
+	parser         *workflow.Parser
+	statusService  *status.StatusService
 }
 
 // NewProjectHandler creates a new project handler.
@@ -38,16 +59,28 @@ func NewProjectHandler(
 	providers *auth.Registry,
 	templates *templates.Engine,
 	logger *slog.Logger,
+	wm webhookManager,
+	fileFetcher *gitclient.FileContentFetcher,
+	ts tokenSource,
+	buildCreator *services.BuildCreator,
+	parser *workflow.Parser,
+	statusService *status.StatusService,
 ) *ProjectHandler {
 	return &ProjectHandler{
-		projects:     projects,
-		projectUsers: projectUsers,
-		users:        users,
-		builds:       builds,
-		secrets:      secrets,
-		providers:    providers,
-		templates:    templates,
-		logger:       logger,
+		projects:       projects,
+		projectUsers:   projectUsers,
+		users:          users,
+		builds:         builds,
+		secrets:        secrets,
+		providers:      providers,
+		templates:      templates,
+		logger:         logger,
+		webhookManager: wm,
+		fileFetcher:    fileFetcher,
+		tokenSource:    ts,
+		buildCreator:   buildCreator,
+		parser:         parser,
+		statusService:  statusService,
 	}
 }
 
@@ -235,6 +268,12 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Use provider-reported default branch, fall back to "main"
+	defaultBranch := r.FormValue("default_branch")
+	if defaultBranch == "" {
+		defaultBranch = "main"
+	}
+
 	// Create new project
 	project := &models.Project{
 		Provider:      user.Provider,
@@ -242,7 +281,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name:          name,
 		FullName:      fullName,
 		CloneURL:      cloneURL,
-		DefaultBranch: "main", // TODO: Fetch default branch from provider API
+		DefaultBranch: defaultBranch,
 	}
 
 	if err := h.projects.Create(ctx, project); err != nil {
@@ -261,6 +300,23 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.logger.Info("project created", "project_id", project.ID, "full_name", fullName, "user_id", user.ID)
+
+	// Register webhook if base URL is publicly reachable
+	if h.webhookManager != nil && h.webhookManager.ShouldRegister() {
+		token := &oauth2.Token{
+			AccessToken:  user.AccessToken,
+			RefreshToken: user.RefreshToken,
+		}
+		webhookID, err := h.webhookManager.RegisterWebhook(ctx, user.Provider, token.AccessToken, fullName, project.WebhookSecret)
+		if err != nil {
+			h.logger.Warn("failed to register webhook (non-fatal)", "error", err, "project_id", project.ID)
+		} else {
+			project.WebhookID = webhookID
+			if err := h.projects.Update(ctx, project); err != nil {
+				h.logger.Warn("failed to save webhook ID", "error", err, "project_id", project.ID)
+			}
+		}
+	}
 
 	// Redirect to the new project
 	http.Redirect(w, r, fmt.Sprintf("/projects/%s/%s", project.Namespace, project.Name), http.StatusSeeOther)
@@ -553,6 +609,104 @@ func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/projects", http.StatusSeeOther)
 }
 
+// TriggerBuild manually triggers a build for the project's default branch.
+// POST /projects/{namespace}/{name}/trigger
+func (h *ProjectHandler) TriggerBuild(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	namespace, name, err := h.getProjectFromPath(r)
+	if err != nil {
+		http.Error(w, "Invalid project path", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+	fullName := namespace + "/" + name
+
+	project, err := h.projects.GetByFullName(ctx, user.Provider, fullName)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get project", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	canManage, err := h.projectUsers.CanUserManage(ctx, project.ID, user.ID)
+	if err != nil {
+		h.logger.Error("failed to check manage permission", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	if !canManage && !user.IsAdmin {
+		http.Error(w, "Forbidden", http.StatusForbidden)
+		return
+	}
+
+	// Resolve the git hosting provider — may differ from user.Provider in dev mode
+	gitProvider := resolveGitProvider(project)
+
+	// Get token for API calls — prefer current user's token, fall back to project token source
+	token := user.AccessToken
+	if token == "" {
+		var err error
+		token, err = h.tokenSource.TokenForProject(ctx, project.ID)
+		if err != nil {
+			h.logger.Error("failed to get token for project", "error", err, "project_id", project.ID)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Get latest commit on default branch
+	head, err := h.fileFetcher.GetBranchHead(ctx, gitProvider, token, project.FullName, project.DefaultBranch)
+	if err != nil {
+		h.logger.Error("failed to get branch head", "error", err, "branch", project.DefaultBranch)
+		http.Error(w, "Failed to get branch info from provider", http.StatusBadGateway)
+		return
+	}
+
+	// Fetch workflow file
+	content, err := h.fileFetcher.GetFileContent(ctx, gitProvider, token, project.FullName, ".featherci/workflow.yml", head.CommitSHA)
+	if err != nil {
+		h.logger.Error("failed to get workflow file", "error", err)
+		http.Error(w, "No .featherci/workflow.yml found at HEAD of "+project.DefaultBranch, http.StatusUnprocessableEntity)
+		return
+	}
+
+	// Parse workflow
+	wf, err := h.parser.ParseAndValidate(content)
+	if err != nil {
+		h.logger.Error("failed to parse workflow", "error", err)
+		http.Error(w, "Invalid workflow: "+err.Error(), http.StatusUnprocessableEntity)
+		return
+	}
+
+	// Create build
+	build, err := h.buildCreator.CreateBuild(ctx, project.ID, head.CommitSHA, head.CommitMessage, head.CommitAuthor, project.DefaultBranch, wf)
+	if err != nil {
+		h.logger.Error("failed to create build", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	h.logger.Info("manual build triggered",
+		"project_id", project.ID,
+		"build_number", build.BuildNumber,
+		"user_id", user.ID,
+		"commit", head.CommitSHA[:8],
+	)
+
+	// Redirect to the new build
+	http.Redirect(w, r, fmt.Sprintf("/projects/%s/%s/builds/%d", project.Namespace, project.Name, build.BuildNumber), http.StatusSeeOther)
+}
+
 // fetchUserRepositories fetches repositories from the user's OAuth provider.
 func (h *ProjectHandler) fetchUserRepositories(r *http.Request, user *models.User) ([]auth.Repository, error) {
 	provider, ok := h.providers.Get(user.Provider)
@@ -641,6 +795,29 @@ func (h *ProjectHandler) getProjectFromPath(r *http.Request) (string, string, er
 	}
 
 	return namespace, name, nil
+}
+
+// resolveGitProvider detects the actual git hosting provider from the project's
+// clone URL. In dev mode the project's Provider field is "dev", but API calls
+// need the real provider name.
+func resolveGitProvider(project *models.Project) string {
+	switch project.Provider {
+	case "github", "gitlab", "gitea":
+		return project.Provider
+	}
+	// Infer from clone URL
+	lower := strings.ToLower(project.CloneURL)
+	if strings.Contains(lower, "github.com") {
+		return "github"
+	}
+	if strings.Contains(lower, "gitlab") {
+		return "gitlab"
+	}
+	if strings.Contains(lower, "gitea") || strings.Contains(lower, "forgejo") {
+		return "gitea"
+	}
+	// Default to github as the most common
+	return "github"
 }
 
 func formatDurationShort(d time.Duration) string {

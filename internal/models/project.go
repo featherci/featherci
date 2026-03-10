@@ -20,6 +20,7 @@ type Project struct {
 	FullName      string    `db:"full_name"`
 	CloneURL      string    `db:"clone_url"`
 	WebhookSecret string    `db:"webhook_secret"`
+	WebhookID     string    `db:"webhook_id"`
 	DefaultBranch string    `db:"default_branch"`
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
@@ -84,8 +85,8 @@ func (r *SQLiteProjectRepository) Create(ctx context.Context, project *Project) 
 	}
 
 	query := `
-		INSERT INTO projects (provider, namespace, name, full_name, clone_url, webhook_secret, default_branch, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO projects (provider, namespace, name, full_name, clone_url, webhook_secret, webhook_id, default_branch, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	now := time.Now()
 	result, err := r.db.ExecContext(ctx, query,
@@ -95,6 +96,7 @@ func (r *SQLiteProjectRepository) Create(ctx context.Context, project *Project) 
 		project.FullName,
 		project.CloneURL,
 		project.WebhookSecret,
+		project.WebhookID,
 		project.DefaultBranch,
 		now,
 		now,
@@ -182,8 +184,8 @@ func (r *SQLiteProjectRepository) ListWithStatus(ctx context.Context) ([]*Projec
 func (r *SQLiteProjectRepository) Update(ctx context.Context, project *Project) error {
 	query := `
 		UPDATE projects
-		SET namespace = ?, name = ?, full_name = ?, clone_url = ?, 
-		    webhook_secret = ?, default_branch = ?, updated_at = ?
+		SET namespace = ?, name = ?, full_name = ?, clone_url = ?,
+		    webhook_secret = ?, webhook_id = ?, default_branch = ?, updated_at = ?
 		WHERE id = ?
 	`
 	project.UpdatedAt = time.Now()
@@ -193,6 +195,7 @@ func (r *SQLiteProjectRepository) Update(ctx context.Context, project *Project) 
 		project.FullName,
 		project.CloneURL,
 		project.WebhookSecret,
+		project.WebhookID,
 		project.DefaultBranch,
 		project.UpdatedAt,
 		project.ID,

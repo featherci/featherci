@@ -100,30 +100,34 @@
                 <thead>
                     <tr>
                         <th>Status</th>
-                        <th>Project</th>
-                        <th>Branch</th>
+                        <th>Build</th>
                         <th>Commit</th>
+                        <th>Branch</th>
                         <th>Duration</th>
                         <th>Started</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     {{range .RecentBuilds}}
-                    <tr>
+                    <tr class="hover:bg-gray-50">
                         <td>
                             {{template "status-badge" .}}
                         </td>
                         <td>
-                            <a href="/projects/{{.ProjectID}}" class="text-feather-600 hover:text-feather-800 font-medium">
-                                {{.ProjectName}}
+                            <a href="/projects/{{.Namespace}}/{{.Name}}/builds/{{.BuildNumber}}" class="text-feather-600 hover:text-feather-800 font-medium">
+                                {{.ProjectName}} #{{.BuildNumber}}
                             </a>
+                        </td>
+                        <td>
+                            <div class="max-w-xs">
+                                <p class="text-sm text-gray-900 truncate">{{.CommitMessage}}</p>
+                                <p class="text-xs text-gray-500">
+                                    <span class="font-mono">{{truncate .CommitSHA 7}}</span>
+                                    {{if .CommitAuthor}} by {{.CommitAuthor}}{{end}}
+                                </p>
+                            </div>
                         </td>
                         <td class="font-mono text-sm">{{.Branch}}</td>
-                        <td>
-                            <a href="/builds/{{.ID}}" class="font-mono text-sm text-gray-600 hover:text-gray-900">
-                                {{truncate .CommitSHA 7}}
-                            </a>
-                        </td>
                         <td class="text-sm text-gray-500">
                             {{if .Duration}}{{duration .Duration}}{{else}}-{{end}}
                         </td>

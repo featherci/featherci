@@ -5,6 +5,7 @@
     hx-trigger="every 5s"
     hx-swap="outerHTML"
     {{end}}>
+    {{template "pipeline-graph" .}}
     {{if .Build.Steps}}
     <div class="divide-y divide-gray-200">
         {{range .Build.Steps}}

@@ -33,6 +33,7 @@ type Server struct {
 	sessions       models.SessionStore
 	projects       models.ProjectRepository
 	projectUsers   models.ProjectUserRepository
+	builds         models.BuildRepository
 	templates      *templates.Engine
 	authHandler    *handlers.AuthHandler
 	projectHandler *handlers.ProjectHandler
@@ -88,6 +89,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 		sessions:       sessions,
 		projects:       projects,
 		projectUsers:   projectUsers,
+		builds:         builds,
 		templates:      tmpl,
 		authHandler:    authHandler,
 		projectHandler: projectHandler,

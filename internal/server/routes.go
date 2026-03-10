@@ -40,14 +40,19 @@ type DashboardStats struct {
 
 // BuildSummary holds a summary of a build for display.
 type BuildSummary struct {
-	ID          int64
-	ProjectID   int64
-	ProjectName string
-	Status      string
-	Branch      string
-	CommitSHA   string
-	Duration    time.Duration
-	StartedAt   time.Time
+	ID            int64
+	BuildNumber   int
+	ProjectID     int64
+	ProjectName   string
+	Namespace     string
+	Name          string
+	Status        string
+	Branch        string
+	CommitSHA     string
+	CommitMessage string
+	CommitAuthor  string
+	Duration      time.Duration
+	StartedAt     time.Time
 }
 
 // setupRoutes configures all HTTP routes.
@@ -101,6 +106,7 @@ func (s *Server) setupRoutes() http.Handler {
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.StepLog)))
 
 	// API routes for workers
+	// TODO: Implement worker API endpoints (job polling, status reporting, heartbeat)
 	mux.HandleFunc("GET /api/worker/jobs", s.handleNotImplemented)
 	mux.HandleFunc("POST /api/worker/jobs/{id}/status", s.handleNotImplemented)
 	mux.HandleFunc("POST /api/worker/heartbeat", s.handleNotImplemented)
@@ -151,6 +157,58 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			projects = nil
 		}
 
+		// Load recent builds for user
+		var recentBuilds []BuildSummary
+		builds, err := s.builds.ListByUser(r.Context(), user.ID, 10, 0)
+		if err != nil {
+			s.logger.Error("failed to load recent builds", "error", err)
+		} else {
+			// Build project info lookup from user's projects
+			type projectInfo struct {
+				Namespace, Name, FullName string
+			}
+			projectMap := make(map[int64]projectInfo, len(projects))
+			for _, p := range projects {
+				projectMap[p.ID] = projectInfo{
+					Namespace: p.Namespace,
+					Name:      p.Name,
+					FullName:  p.Namespace + "/" + p.Name,
+				}
+			}
+
+			for _, b := range builds {
+				pi := projectMap[b.ProjectID]
+				recentBuilds = append(recentBuilds, BuildSummary{
+					ID:            b.ID,
+					BuildNumber:   b.BuildNumber,
+					ProjectID:     b.ProjectID,
+					ProjectName:   pi.FullName,
+					Namespace:     pi.Namespace,
+					Name:          pi.Name,
+					Status:        string(b.Status),
+					Branch:        derefStr(b.Branch),
+					CommitSHA:     b.CommitSHA,
+					CommitMessage: derefStr(b.CommitMessage),
+					CommitAuthor:  derefStr(b.CommitAuthor),
+					Duration:      b.Duration(),
+					StartedAt:     safeTime(b.StartedAt),
+				})
+			}
+		}
+
+		// Count build stats
+		var successCount, failureCount, runningCount int
+		for _, b := range recentBuilds {
+			switch b.Status {
+			case "success":
+				successCount++
+			case "failure":
+				failureCount++
+			case "running":
+				runningCount++
+			}
+		}
+
 		// Authenticated user - show dashboard
 		data := DashboardPageData{
 			PageData: PageData{
@@ -160,11 +218,11 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			},
 			Stats: DashboardStats{
 				ProjectCount: len(projects),
-				SuccessCount: 0, // TODO: Get from builds table
-				FailureCount: 0,
-				RunningCount: 0,
+				SuccessCount: successCount,
+				FailureCount: failureCount,
+				RunningCount: runningCount,
 			},
-			RecentBuilds: nil, // TODO: Get from database
+			RecentBuilds: recentBuilds,
 		}
 
 		if err := s.templates.Render(w, "pages/dashboard.html", data); err != nil {
@@ -186,6 +244,22 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		}
 	}
+}
+
+// derefStr dereferences a *string, returning empty string if nil.
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// safeTime dereferences a *time.Time, returning zero time if nil.
+func safeTime(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
 }
 
 // handleNotImplemented returns a 501 Not Implemented response.

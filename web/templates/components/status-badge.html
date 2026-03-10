@@ -1,5 +1,5 @@
 {{define "status-badge"}}
-{{$status := .Status}}
+{{$status := printf "%s" .Status}}
 {{$color := statusColor $status}}
 <span class="badge badge-{{$status}}">
     {{if eq $status "success"}}

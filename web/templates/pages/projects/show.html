@@ -47,6 +47,7 @@
                 Settings
             </a>
             {{end}}
+            <!-- TODO: Implement manual build trigger (POST endpoint + handler) -->
             <button type="button" class="btn btn-primary" disabled title="Coming soon">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
@@ -70,7 +71,7 @@
                 </div>
                 <div class="ml-5">
                     <p class="text-sm font-medium text-gray-500">Total Builds</p>
-                    <p class="mt-1 text-2xl font-semibold text-gray-900">0</p>
+                    <p class="mt-1 text-2xl font-semibold text-gray-900">{{.TotalBuilds}}</p>
                 </div>
             </div>
         </div>
@@ -86,7 +87,7 @@
                 </div>
                 <div class="ml-5">
                     <p class="text-sm font-medium text-gray-500">Success Rate</p>
-                    <p class="mt-1 text-2xl font-semibold text-gray-900">-</p>
+                    <p class="mt-1 text-2xl font-semibold text-gray-900">{{.SuccessRate}}</p>
                 </div>
             </div>
         </div>
@@ -102,7 +103,7 @@
                 </div>
                 <div class="ml-5">
                     <p class="text-sm font-medium text-gray-500">Avg Duration</p>
-                    <p class="mt-1 text-2xl font-semibold text-gray-900">-</p>
+                    <p class="mt-1 text-2xl font-semibold text-gray-900">{{.AvgDuration}}</p>
                 </div>
             </div>
         </div>

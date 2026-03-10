@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/featherci/featherci/internal/auth"
 	"github.com/featherci/featherci/internal/middleware"
@@ -82,6 +83,9 @@ type ProjectShowPageData struct {
 	RecentBuilds []*models.Build
 	CanManage    bool
 	DevMode      bool
+	TotalBuilds  int
+	SuccessRate  string
+	AvgDuration  string
 }
 
 // ProjectSettingsPageData holds data for the project settings page.
@@ -234,7 +238,7 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		Name:          name,
 		FullName:      fullName,
 		CloneURL:      cloneURL,
-		DefaultBranch: "main", // Default, can be updated later
+		DefaultBranch: "main", // TODO: Fetch default branch from provider API
 	}
 
 	if err := h.projects.Create(ctx, project); err != nil {
@@ -317,12 +321,44 @@ func (h *ProjectHandler) Show(w http.ResponseWriter, r *http.Request) {
 		recentBuilds = nil
 	}
 
+	// Compute stats from recent builds
+	totalBuilds, err := h.builds.CountByProject(ctx, project.ID)
+	if err != nil {
+		h.logger.Error("failed to count builds", "error", err)
+	}
+
+	var successCount int
+	var totalDuration time.Duration
+	var durationCount int
+	for _, b := range recentBuilds {
+		if b.Status == models.BuildStatusSuccess {
+			successCount++
+		}
+		d := b.Duration()
+		if d > 0 {
+			totalDuration += d
+			durationCount++
+		}
+	}
+
+	successRate := "-"
+	if len(recentBuilds) > 0 {
+		successRate = fmt.Sprintf("%.0f%%", float64(successCount)/float64(len(recentBuilds))*100)
+	}
+	avgDuration := "-"
+	if durationCount > 0 {
+		avgDuration = formatDurationShort(totalDuration / time.Duration(durationCount))
+	}
+
 	data := ProjectShowPageData{
 		User:         user,
 		Project:      project,
 		RecentBuilds: recentBuilds,
 		CanManage:    canManage,
 		DevMode:      false,
+		TotalBuilds:  totalBuilds,
+		SuccessRate:  successRate,
+		AvgDuration:  avgDuration,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -594,4 +630,17 @@ func (h *ProjectHandler) getProjectFromPath(r *http.Request) (string, string, er
 	}
 
 	return namespace, name, nil
+}
+
+func formatDurationShort(d time.Duration) string {
+	if d < time.Second {
+		return fmt.Sprintf("%dms", d.Milliseconds())
+	}
+	if d < time.Minute {
+		return fmt.Sprintf("%.0fs", d.Seconds())
+	}
+	if d < time.Hour {
+		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%60)
+	}
+	return fmt.Sprintf("%dh %dm", int(d.Hours()), int(d.Minutes())%60)
 }

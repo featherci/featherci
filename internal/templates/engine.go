@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/featherci/featherci/internal/graph"
+	"github.com/featherci/featherci/internal/models"
 	webtemplates "github.com/featherci/featherci/web/templates"
 )
 
@@ -150,6 +152,14 @@ func templateFuncs() template.FuncMap {
 
 		// Pointer helpers
 		"deref": derefString,
+
+		// Pipeline graph
+		"pipelineGraph": func(steps []*models.BuildStep) *graph.Layout {
+			return graph.Calculate(steps)
+		},
+		"edgePath": func(e graph.Edge) template.HTML {
+			return template.HTML(graph.EdgePath(e)) //nolint:gosec // trusted internal content
+		},
 
 		// Iteration helpers
 		"seq": func(n int) []int {

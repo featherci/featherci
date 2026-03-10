@@ -22,6 +22,7 @@ type ProjectHandler struct {
 	projectUsers models.ProjectUserRepository
 	users        models.UserRepository
 	builds       models.BuildRepository
+	secrets      models.SecretRepository
 	providers    *auth.Registry
 	templates    *templates.Engine
 	logger       *slog.Logger
@@ -33,6 +34,7 @@ func NewProjectHandler(
 	projectUsers models.ProjectUserRepository,
 	users models.UserRepository,
 	builds models.BuildRepository,
+	secrets models.SecretRepository,
 	providers *auth.Registry,
 	templates *templates.Engine,
 	logger *slog.Logger,
@@ -42,6 +44,7 @@ func NewProjectHandler(
 		projectUsers: projectUsers,
 		users:        users,
 		builds:       builds,
+		secrets:      secrets,
 		providers:    providers,
 		templates:    templates,
 		logger:       logger,
@@ -90,11 +93,12 @@ type ProjectShowPageData struct {
 
 // ProjectSettingsPageData holds data for the project settings page.
 type ProjectSettingsPageData struct {
-	User       *models.User
-	Project    *models.Project
-	WebhookURL string
-	DevMode    bool
-	Error      string
+	User        *models.User
+	Project     *models.Project
+	WebhookURL  string
+	DevMode     bool
+	Error       string
+	SecretCount int
 	Success    string
 }
 
@@ -412,11 +416,18 @@ func (h *ProjectHandler) Settings(w http.ResponseWriter, r *http.Request) {
 	// TODO: Build webhook URL from config
 	webhookURL := fmt.Sprintf("/webhooks/%s", project.Provider)
 
+	// Count secrets for display
+	var secretCount int
+	if secrets, err := h.secrets.ListByProject(ctx, project.ID); err == nil {
+		secretCount = len(secrets)
+	}
+
 	data := ProjectSettingsPageData{
-		User:       user,
-		Project:    project,
-		WebhookURL: webhookURL,
-		DevMode:    false,
+		User:        user,
+		Project:     project,
+		WebhookURL:  webhookURL,
+		DevMode:     false,
+		SecretCount: secretCount,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

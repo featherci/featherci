@@ -11,6 +11,7 @@ import (
 
 	"github.com/featherci/featherci/internal/auth"
 	"github.com/featherci/featherci/internal/config"
+	"github.com/featherci/featherci/internal/crypto"
 	"github.com/featherci/featherci/internal/database"
 	"github.com/featherci/featherci/internal/gitclient"
 	"github.com/featherci/featherci/internal/handlers"
@@ -39,6 +40,7 @@ type Server struct {
 	projectHandler *handlers.ProjectHandler
 	webhookHandler *handlers.WebhookHandler
 	buildHandler   *handlers.BuildHandler
+	secretHandler  *handlers.SecretHandler
 	authMiddleware *middleware.AuthMiddleware
 }
 
@@ -74,11 +76,20 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	tokenSource := worker.NewProjectTokenSource(projectUsers)
 	buildCreator := services.NewBuildCreator(builds, steps)
 
+	// Initialize secrets
+	encryptor, err := crypto.NewEncryptor(cfg.SecretKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create encryptor: %w", err)
+	}
+	secrets := models.NewSecretRepository(db.DB)
+	secretService := services.NewSecretService(secrets, encryptor)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(providers, users, sessions, cfg)
-	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, builds, providers, tmpl, logger)
+	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, builds, secrets, providers, tmpl, logger)
 	webhookHandler := handlers.NewWebhookHandler(projects, logger, buildCreator, fileFetcher, tokenSource, parser)
 	buildHandler := handlers.NewBuildHandler(projects, builds, steps, tmpl, logger)
+	secretHandler := handlers.NewSecretHandler(secretService, projects, projectUsers, tmpl, logger)
 
 	return &Server{
 		config:         cfg,
@@ -95,6 +106,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 		projectHandler: projectHandler,
 		webhookHandler: webhookHandler,
 		buildHandler:   buildHandler,
+		secretHandler:  secretHandler,
 		authMiddleware: authMiddleware,
 	}, nil
 }

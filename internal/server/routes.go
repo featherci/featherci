@@ -105,6 +105,14 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.Handle("GET /projects/{namespace}/{name}/builds/{number}/steps/{stepID}/log",
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.StepLog)))
 
+	// Secrets
+	mux.Handle("GET /projects/{namespace}/{name}/secrets",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.secretHandler.List)))
+	mux.Handle("POST /projects/{namespace}/{name}/secrets",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.secretHandler.Create)))
+	mux.Handle("POST /projects/{namespace}/{name}/secrets/{secretName}/delete",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.secretHandler.Delete)))
+
 	// API routes for workers
 	// TODO: Implement worker API endpoints (job polling, status reporting, heartbeat)
 	mux.HandleFunc("GET /api/worker/jobs", s.handleNotImplemented)

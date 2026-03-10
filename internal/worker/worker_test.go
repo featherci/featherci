@@ -243,7 +243,7 @@ func makeWorker(
 		HeartbeatInterval: 5 * time.Second,
 		MaxConcurrent:     2,
 	}
-	w := New(cfg, steps, builds, projects, workers, tokens, git, ws, runner, nil)
+	w := New(cfg, steps, builds, projects, workers, tokens, nil, git, ws, runner, nil)
 	w.id = "test-worker"
 	return w
 }
@@ -309,7 +309,7 @@ func TestSkipsWhenAtCapacity(t *testing.T) {
 	mockExec := &noopExecutor{exitCode: 0}
 	runner := executor.NewStepRunner(mockExec)
 
-	w := New(cfg, steps, builds, projects, workers, tokens, gitSvc, ws, runner, nil)
+	w := New(cfg, steps, builds, projects, workers, tokens, nil, gitSvc, ws, runner, nil)
 	w.id = "test-worker"
 
 	// Fill the semaphore

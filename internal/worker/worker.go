@@ -46,6 +46,11 @@ type workerRepo interface {
 	SetOffline(ctx context.Context, id string) error
 }
 
+// secretSource provides decrypted secrets for builds.
+type secretSource interface {
+	GetDecryptedSecrets(ctx context.Context, projectID int64) (map[string]string, error)
+}
+
 // tokenSource provides git access tokens for cloning.
 type tokenSource interface {
 	TokenForProject(ctx context.Context, projectID int64) (string, error)
@@ -88,6 +93,7 @@ type Worker struct {
 	projects  projectRepo
 	workers   workerRepo
 	tokens    tokenSource
+	secrets   secretSource
 	git       gitService
 	workspace workspaceManager
 	runner    *executor.StepRunner
@@ -104,6 +110,7 @@ func New(
 	projects projectRepo,
 	workers workerRepo,
 	tokens tokenSource,
+	secrets secretSource,
 	git gitService,
 	workspace workspaceManager,
 	runner *executor.StepRunner,
@@ -119,6 +126,7 @@ func New(
 		projects:  projects,
 		workers:   workers,
 		tokens:    tokens,
+		secrets:   secrets,
 		git:       git,
 		workspace: workspace,
 		runner:    runner,
@@ -271,6 +279,24 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 			log.Error("checkout failed", "error", err)
 			w.failStep(ctx, step, log)
 			return
+		}
+	}
+
+	// Inject project secrets into step env (secrets as base, step env overrides)
+	if w.secrets != nil {
+		projectSecrets, err := w.secrets.GetDecryptedSecrets(ctx, project.ID)
+		if err != nil {
+			log.Error("failed to get secrets", "error", err)
+			// Non-fatal: continue without secrets
+		} else if len(projectSecrets) > 0 {
+			if step.Env == nil {
+				step.Env = make(map[string]string, len(projectSecrets))
+			}
+			for k, v := range projectSecrets {
+				if _, exists := step.Env[k]; !exists {
+					step.Env[k] = v
+				}
+			}
 		}
 	}
 

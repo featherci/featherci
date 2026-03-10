@@ -32,7 +32,10 @@ func setupTestServer(t *testing.T) (*Server, *database.DB) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	srv := New(cfg, db, logger)
+	srv, err := New(cfg, db, logger)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	return srv, db
 }
@@ -149,10 +152,10 @@ func TestDashboard_Authenticated(t *testing.T) {
 
 	body := rec.Body.String()
 	if !containsString(body, "Welcome") {
-		t.Error("dashboard should show welcome message when authenticated")
+		t.Errorf("dashboard should show welcome message when authenticated, got: %s", body[:min(len(body), 500)])
 	}
-	if !containsString(body, "Logout") {
-		t.Error("dashboard should show logout button when authenticated")
+	if !containsString(body, "Sign out") {
+		t.Error("dashboard should show sign out link when authenticated")
 	}
 }
 
@@ -203,7 +206,10 @@ func TestDevLogin_DisabledInProduction(t *testing.T) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	srv := New(cfg, db, logger)
+	srv, err := New(cfg, db, logger)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	router := srv.setupRoutes()
 
@@ -267,7 +273,10 @@ func TestServerStart_Shutdown(t *testing.T) {
 	}
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
-	srv := New(cfg, db, logger)
+	srv, err := New(cfg, db, logger)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 

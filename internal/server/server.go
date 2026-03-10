@@ -15,6 +15,7 @@ import (
 	"github.com/featherci/featherci/internal/handlers"
 	"github.com/featherci/featherci/internal/middleware"
 	"github.com/featherci/featherci/internal/models"
+	"github.com/featherci/featherci/internal/templates"
 )
 
 // Server represents the FeatherCI HTTP server.
@@ -26,14 +27,21 @@ type Server struct {
 	providers      *auth.Registry
 	users          models.UserRepository
 	sessions       models.SessionStore
+	templates      *templates.Engine
 	authHandler    *handlers.AuthHandler
 	authMiddleware *middleware.AuthMiddleware
 }
 
 // New creates a new Server instance.
-func New(cfg *config.Config, db *database.DB, logger *slog.Logger) *Server {
+func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, error) {
 	if logger == nil {
 		logger = slog.Default()
+	}
+
+	// Initialize template engine
+	tmpl, err := templates.New()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize templates: %w", err)
 	}
 
 	// Initialize repositories
@@ -56,9 +64,10 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) *Server {
 		providers:      providers,
 		users:          users,
 		sessions:       sessions,
+		templates:      tmpl,
 		authHandler:    authHandler,
 		authMiddleware: authMiddleware,
-	}
+	}, nil
 }
 
 // Start starts the HTTP server and blocks until the context is cancelled.

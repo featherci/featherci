@@ -1,8 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    "../templates/**/*.html",
-    "../../internal/server/routes.go", // Temporary: for inline HTML during development
+    "./web/templates/**/*.html",
+    "./internal/server/routes.go", // Temporary: for inline HTML during development
   ],
   // Safelist component classes that are defined in @layer components
   // These need to be safelisted since they're defined with @apply and

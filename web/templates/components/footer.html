@@ -1,0 +1,26 @@
+{{define "footer"}}
+<footer class="bg-white border-t border-gray-200">
+    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+            <div class="flex items-center space-x-2 text-gray-500 text-sm">
+                <svg class="h-5 w-5 text-feather-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+                    <line x1="16" y1="8" x2="2" y2="22"/>
+                    <line x1="17.5" y1="15" x2="9" y2="15"/>
+                </svg>
+                <span>FeatherCI</span>
+                <span class="text-gray-300">•</span>
+                <span>Lightweight CI/CD</span>
+            </div>
+            <div class="flex items-center space-x-4 text-sm text-gray-500">
+                <a href="https://github.com/featherci/featherci" target="_blank" rel="noopener" class="hover:text-gray-700 transition-colors">
+                    GitHub
+                </a>
+                <a href="/docs" class="hover:text-gray-700 transition-colors">
+                    Docs
+                </a>
+            </div>
+        </div>
+    </div>
+</footer>
+{{end}}

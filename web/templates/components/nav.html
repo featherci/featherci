@@ -1,0 +1,91 @@
+{{define "nav"}}
+<nav class="bg-gray-900 shadow-lg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex h-16 items-center justify-between">
+            <!-- Logo and main nav -->
+            <div class="flex items-center">
+                <a href="/" class="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors">
+                    <svg class="h-8 w-8 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+                        <line x1="16" y1="8" x2="2" y2="22"/>
+                        <line x1="17.5" y1="15" x2="9" y2="15"/>
+                    </svg>
+                    <span class="text-xl font-bold">FeatherCI</span>
+                </a>
+                
+                {{if .User}}
+                <div class="hidden md:flex ml-10 items-center space-x-1">
+                    <a href="/projects" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium transition-colors">
+                        Projects
+                    </a>
+                    {{if .User.IsAdmin}}
+                    <a href="/admin" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium transition-colors">
+                        Admin
+                    </a>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+            
+            <!-- User section -->
+            <div class="flex items-center space-x-4">
+                {{if .User}}
+                <div class="flex items-center space-x-3">
+                    {{if .User.AvatarURL}}
+                    <img class="h-8 w-8 rounded-full ring-2 ring-gray-700" src="{{.User.AvatarURL}}" alt="{{.User.Username}}">
+                    {{else}}
+                    <div class="h-8 w-8 rounded-full bg-feather-600 flex items-center justify-center text-white text-sm font-medium">
+                        {{slice .User.Username 0 1 | upper}}
+                    </div>
+                    {{end}}
+                    <span class="hidden sm:inline text-gray-300 text-sm font-medium">{{.User.Username}}</span>
+                    {{if .User.IsAdmin}}
+                    <span class="hidden sm:inline px-2 py-0.5 text-xs font-medium bg-feather-600 text-white rounded-full">Admin</span>
+                    {{end}}
+                    <form action="/auth/logout" method="POST" class="inline">
+                        <button type="submit" class="text-gray-400 hover:text-white text-sm font-medium transition-colors">
+                            Sign out
+                        </button>
+                    </form>
+                </div>
+                {{else}}
+                <!-- Login buttons for anonymous users -->
+                <div class="flex items-center space-x-2">
+                    {{if .DevMode}}
+                    <a href="/auth/dev" class="btn btn-dev btn-sm">
+                        Dev Login
+                    </a>
+                    {{end}}
+                    {{range .Providers}}
+                    <a href="/auth/{{.}}" class="btn btn-{{.}} btn-sm">
+                        {{if eq . "github"}}
+                        <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                        </svg>
+                        {{end}}
+                        Sign in{{if eq . "github"}} with GitHub{{else if eq . "gitlab"}} with GitLab{{else if eq . "gitea"}} with Gitea{{end}}
+                    </a>
+                    {{end}}
+                </div>
+                {{end}}
+            </div>
+        </div>
+    </div>
+    
+    {{if .User}}
+    <!-- Mobile menu -->
+    <div class="md:hidden border-t border-gray-700">
+        <div class="px-2 py-3 space-y-1">
+            <a href="/projects" class="text-gray-300 hover:bg-gray-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium">
+                Projects
+            </a>
+            {{if .User.IsAdmin}}
+            <a href="/admin" class="text-gray-300 hover:bg-gray-700 hover:text-white block rounded-md px-3 py-2 text-base font-medium">
+                Admin
+            </a>
+            {{end}}
+        </div>
+    </div>
+    {{end}}
+</nav>
+{{end}}

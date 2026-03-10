@@ -62,7 +62,7 @@ func TestStepRunner_RunStep_Success(t *testing.T) {
 		TimeoutMinutes: 30,
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace)
+	result := runner.RunStep(context.Background(), step, workspace, nil)
 
 	if result.Status != models.StepStatusSuccess {
 		t.Errorf("expected success, got %s", result.Status)
@@ -107,7 +107,7 @@ func TestStepRunner_RunStep_Failure(t *testing.T) {
 		Commands: []string{"false"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace)
+	result := runner.RunStep(context.Background(), step, workspace, nil)
 
 	if result.Status != models.StepStatusFailure {
 		t.Errorf("expected failure, got %s", result.Status)
@@ -135,7 +135,7 @@ func TestStepRunner_RunStep_ExecutorError(t *testing.T) {
 		Commands: []string{"echo hi"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace)
+	result := runner.RunStep(context.Background(), step, workspace, nil)
 
 	if result.Status != models.StepStatusFailure {
 		t.Errorf("expected failure, got %s", result.Status)
@@ -173,7 +173,7 @@ func TestStepRunner_RunStep_DefaultImage(t *testing.T) {
 		Commands: []string{"echo hi"},
 	}
 
-	runner.RunStep(context.Background(), step, workspace)
+	runner.RunStep(context.Background(), step, workspace, nil)
 
 	if capturedOpts.Image != "alpine:latest" {
 		t.Errorf("expected default image alpine:latest, got %s", capturedOpts.Image)
@@ -200,7 +200,7 @@ func TestStepRunner_RunStep_DefaultWorkDir(t *testing.T) {
 		Commands: []string{"pwd"},
 	}
 
-	runner.RunStep(context.Background(), step, workspace)
+	runner.RunStep(context.Background(), step, workspace, nil)
 
 	if capturedOpts.WorkDir != "/workspace" {
 		t.Errorf("expected default workdir /workspace, got %s", capturedOpts.WorkDir)
@@ -221,7 +221,7 @@ func TestStepRunner_RunStep_LogPath(t *testing.T) {
 		Commands: []string{"echo hi"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace)
+	result := runner.RunStep(context.Background(), step, workspace, nil)
 
 	expectedLogDir := filepath.Join(dir, "logs")
 	expectedLogPath := filepath.Join(expectedLogDir, "99.log")
@@ -252,7 +252,7 @@ func TestStepRunner_RunStep_OutputCapture(t *testing.T) {
 		Commands: []string{"echo hello"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace)
+	result := runner.RunStep(context.Background(), step, workspace, nil)
 
 	if result.Status != models.StepStatusSuccess {
 		t.Errorf("expected success, got %s", result.Status)
@@ -292,9 +292,57 @@ func TestStepRunner_RunStep_DefaultTimeout(t *testing.T) {
 		// TimeoutMinutes defaults to 0, GetTimeout() returns 60
 	}
 
-	runner.RunStep(context.Background(), step, workspace)
+	runner.RunStep(context.Background(), step, workspace, nil)
 
 	if capturedOpts.Timeout != 60*time.Minute {
 		t.Errorf("expected 60m default timeout, got %s", capturedOpts.Timeout)
+	}
+}
+
+func TestStepRunner_RunStep_SecretMasking(t *testing.T) {
+	exec := &mockExecutor{
+		runFn: func(ctx context.Context, opts RunOptions) (*RunResult, error) {
+			// Simulate container printing secret values in output.
+			if opts.Output != nil {
+				opts.Output.Write([]byte("token is supersecret123\npassword is hunter2\nno secrets here\n"))
+			}
+			return &RunResult{ExitCode: 0, StartedAt: time.Now(), FinishedAt: time.Now()}, nil
+		},
+	}
+	runner := NewStepRunner(exec, nil)
+
+	dir := t.TempDir()
+	workspace := filepath.Join(dir, "workspace")
+	os.MkdirAll(workspace, 0755)
+
+	step := &models.BuildStep{
+		ID:       77,
+		Image:    strPtr("alpine"),
+		Commands: []string{"echo secrets"},
+	}
+
+	result := runner.RunStep(context.Background(), step, workspace, []string{"supersecret123", "hunter2"})
+
+	if result.Status != models.StepStatusSuccess {
+		t.Fatalf("expected success, got %s", result.Status)
+	}
+
+	content, err := os.ReadFile(result.LogPath)
+	if err != nil {
+		t.Fatalf("reading log: %v", err)
+	}
+
+	logStr := string(content)
+	if strings.Contains(logStr, "supersecret123") {
+		t.Error("secret 'supersecret123' was not masked in log output")
+	}
+	if strings.Contains(logStr, "hunter2") {
+		t.Error("secret 'hunter2' was not masked in log output")
+	}
+	if !strings.Contains(logStr, "token is ***") {
+		t.Errorf("expected masked output, got: %s", logStr)
+	}
+	if !strings.Contains(logStr, "no secrets here") {
+		t.Errorf("expected non-secret content to be preserved, got: %s", logStr)
 	}
 }

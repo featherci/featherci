@@ -137,6 +137,8 @@ func (s *Server) setupRoutes() http.Handler {
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.PreviewList)))
 	mux.Handle("GET /notifications/preview/{id}",
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.PreviewShow)))
+	mux.Handle("GET /notifications/preview/{id}/raw",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.PreviewRaw)))
 
 	// Admin
 	mux.Handle("GET /admin", s.authMiddleware.RequireAdmin(http.HandlerFunc(s.adminHandler.Dashboard)))

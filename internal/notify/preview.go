@@ -13,6 +13,9 @@ type PreviewEntry struct {
 	ChannelType string
 	Event       BuildEvent
 	HTML        string // rendered email HTML (for email types) or formatted text
+	Subject     string // email subject (for email types)
+	From        string // sender address (for email types)
+	To          string // recipient addresses (for email types)
 	CapturedAt  time.Time
 }
 
@@ -30,13 +33,15 @@ func NewPreviewStore() *PreviewStore {
 }
 
 // Capture records a notification entry for later viewing.
-func (s *PreviewStore) Capture(channelName, channelType string, event BuildEvent) {
+// For email types, from and to should be provided from the channel config.
+func (s *PreviewStore) Capture(channelName, channelType string, event BuildEvent, from, to string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	s.nextID++
 
 	html := ""
+	subject := ""
 	// For email types, render the HTML template
 	switch channelType {
 	case "email_smtp", "email_sendgrid", "email_mailgun":
@@ -44,6 +49,7 @@ func (s *PreviewStore) Capture(channelName, channelType string, event BuildEvent
 		if err == nil {
 			html = rendered
 		}
+		subject = event.EmailSubject()
 	}
 
 	s.entries = append(s.entries, PreviewEntry{
@@ -52,6 +58,9 @@ func (s *PreviewStore) Capture(channelName, channelType string, event BuildEvent
 		ChannelType: channelType,
 		Event:       event,
 		HTML:        html,
+		Subject:     subject,
+		From:        from,
+		To:          to,
 		CapturedAt:  time.Now(),
 	})
 
@@ -98,10 +107,12 @@ type previewNotifier struct {
 	store       *PreviewStore
 	channelName string
 	channelType string
+	from        string
+	to          string
 }
 
 // Send captures the notification in the preview store instead of sending.
 func (n *previewNotifier) Send(_ context.Context, event BuildEvent) error {
-	n.store.Capture(n.channelName, n.channelType, event)
+	n.store.Capture(n.channelName, n.channelType, event, n.from, n.to)
 	return nil
 }

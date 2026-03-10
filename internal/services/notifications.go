@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -167,10 +169,12 @@ func (s *NotificationService) TestChannel(ctx context.Context, channelID int64) 
 		CommitAuthor:  "FeatherCI",
 		Duration:      45 * time.Second,
 		BuildURL:      s.baseURL,
+		ProjectURL:    s.baseURL,
+		CommitURL:     "https://github.com/example/test-project/commit/abc1234def5678",
 	}
 
 	if s.devMode && s.previewStore != nil {
-		s.previewStore.Capture(channel.Name, channel.Type, event)
+		s.previewStore.Capture(channel.Name, channel.Type, event, config["from"], config["to"])
 		return nil
 	}
 
@@ -204,6 +208,8 @@ func (s *NotificationService) NotifyBuild(ctx context.Context, build *models.Bui
 		commitAuthor = *build.CommitAuthor
 	}
 
+	projectURL := fmt.Sprintf("%s/projects/%s/%s", s.baseURL, project.Namespace, project.Name)
+
 	event := notify.BuildEvent{
 		ProjectName:   project.FullName,
 		BuildNumber:   build.BuildNumber,
@@ -213,7 +219,9 @@ func (s *NotificationService) NotifyBuild(ctx context.Context, build *models.Bui
 		CommitMessage: commitMsg,
 		CommitAuthor:  commitAuthor,
 		Duration:      build.Duration(),
-		BuildURL:      fmt.Sprintf("%s/projects/%s/%s/builds/%d", s.baseURL, project.Namespace, project.Name, build.BuildNumber),
+		BuildURL:      fmt.Sprintf("%s/builds/%d", projectURL, build.BuildNumber),
+		ProjectURL:    projectURL,
+		CommitURL:     commitURL(project.CloneURL, project.Provider, build.CommitSHA),
 	}
 
 	var wg sync.WaitGroup
@@ -233,7 +241,14 @@ func (s *NotificationService) NotifyBuild(ctx context.Context, build *models.Bui
 
 		// In dev mode, capture instead of sending
 		if s.devMode && s.previewStore != nil {
-			s.previewStore.Capture(ch.Name, ch.Type, event)
+			from, to := "", ""
+			if configBytes, err := s.encryptor.Decrypt(ch.ConfigEncrypted); err == nil {
+				var cfg map[string]string
+				if err := json.Unmarshal(configBytes, &cfg); err == nil {
+					from, to = cfg["from"], cfg["to"]
+				}
+			}
+			s.previewStore.Capture(ch.Name, ch.Type, event, from, to)
 			continue
 		}
 
@@ -270,4 +285,26 @@ func (s *NotificationService) NotifyBuild(ctx context.Context, build *models.Bui
 	}
 	wg.Wait()
 	return nil
+}
+
+// commitURL derives the web URL to view a commit on the git provider.
+func commitURL(cloneURL, provider, sha string) string {
+	u, err := url.Parse(cloneURL)
+	if err != nil {
+		return ""
+	}
+	// Strip .git suffix and credentials
+	path := strings.TrimSuffix(u.Path, ".git")
+	u.User = nil
+	u.Path = ""
+	u.RawQuery = ""
+	u.Fragment = ""
+	base := u.String()
+
+	switch provider {
+	case "gitlab":
+		return base + path + "/-/commit/" + sha
+	default: // github, gitea/forgejo
+		return base + path + "/commit/" + sha
+	}
 }

@@ -55,8 +55,7 @@ func NewSMTPNotifier(config map[string]string) (*SMTPNotifier, error) {
 
 // Send sends a build notification email via SMTP.
 func (n *SMTPNotifier) Send(_ context.Context, event BuildEvent) error {
-	subject := fmt.Sprintf("[FeatherCI] %s Build #%d %s",
-		event.ProjectName, event.BuildNumber, strings.ToUpper(event.Status[:1])+event.Status[1:])
+	subject := event.EmailSubject()
 
 	body, err := renderEmailHTML(event)
 	if err != nil {

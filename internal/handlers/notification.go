@@ -439,13 +439,6 @@ func (h *NotificationHandler) PreviewShow(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// For email types with HTML, serve the raw HTML directly
-	if entry.HTML != "" {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write([]byte(entry.HTML))
-		return
-	}
-
 	data := NotificationPreviewDetailData{
 		User:  user,
 		Entry: entry,
@@ -455,6 +448,41 @@ func (h *NotificationHandler) PreviewShow(w http.ResponseWriter, r *http.Request
 	if err := h.templates.Render(w, "pages/notifications/preview_detail.html", data); err != nil {
 		h.logger.Error("failed to render notification preview detail", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// PreviewRaw serves the raw rendered HTML for an email preview (used in iframe).
+// GET /notifications/preview/{id}/raw
+func (h *NotificationHandler) PreviewRaw(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	store := h.notifications.PreviewStore()
+	if store == nil {
+		http.Error(w, "Preview only available in dev mode", http.StatusNotFound)
+		return
+	}
+
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	entry, found := store.Get(id)
+	if !found {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if entry.HTML != "" {
+		w.Write([]byte(entry.HTML))
+	} else {
+		w.Write([]byte("<p>No HTML preview available for this notification type.</p>"))
 	}
 }
 

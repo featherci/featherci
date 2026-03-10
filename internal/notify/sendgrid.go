@@ -39,8 +39,7 @@ func NewSendgridNotifier(config map[string]string) (*SendgridNotifier, error) {
 
 // Send sends a build notification email via the SendGrid v3 API.
 func (n *SendgridNotifier) Send(ctx context.Context, event BuildEvent) error {
-	subject := fmt.Sprintf("[FeatherCI] %s Build #%d %s",
-		event.ProjectName, event.BuildNumber, event.Status)
+	subject := event.EmailSubject()
 
 	body, err := renderEmailHTML(event)
 	if err != nil {

@@ -9,6 +9,41 @@
         <h1 class="text-2xl font-bold text-gray-900 mt-2">Notification Detail</h1>
     </div>
 
+    {{if .Entry.HTML}}
+    {{/* Email type: show headers and iframe */}}
+    <div class="card">
+        <div class="card-body p-0">
+            <table class="w-full text-sm">
+                {{if .Entry.From}}
+                <tr class="border-b border-gray-200">
+                    <td class="px-4 py-2 font-medium text-gray-600 w-20">From</td>
+                    <td class="px-4 py-2 text-gray-900">{{.Entry.From}}</td>
+                </tr>
+                {{end}}
+                {{if .Entry.To}}
+                <tr class="border-b border-gray-200">
+                    <td class="px-4 py-2 font-medium text-gray-600 w-20">To</td>
+                    <td class="px-4 py-2 text-gray-900">{{.Entry.To}}</td>
+                </tr>
+                {{end}}
+                {{if .Entry.Subject}}
+                <tr class="border-b border-gray-200">
+                    <td class="px-4 py-2 font-medium text-gray-600 w-20">Subject</td>
+                    <td class="px-4 py-2 text-gray-900 font-medium">{{.Entry.Subject}}</td>
+                </tr>
+                {{end}}
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <iframe src="/notifications/preview/{{.Entry.ID}}/raw" class="w-full border-0" style="min-height: 600px;"
+                onload="this.style.height = this.contentWindow.document.body.scrollHeight + 'px'"></iframe>
+        </div>
+    </div>
+    {{else}}
+    {{/* Non-email type: show event details */}}
     <div class="card">
         <div class="card-body space-y-4">
             <div class="grid grid-cols-2 gap-4 text-sm">
@@ -26,5 +61,6 @@
             </div>
         </div>
     </div>
+    {{end}}
 </div>
 {{end}}

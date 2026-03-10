@@ -330,6 +330,8 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 	}
 
 	// Inject project secrets into step env (secrets as base, step env overrides)
+	// Collect secret values for log masking.
+	var secretValues []string
 	if w.secrets != nil {
 		projectSecrets, err := w.secrets.GetDecryptedSecrets(ctx, project.ID)
 		if err != nil {
@@ -340,6 +342,7 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 				step.Env = make(map[string]string, len(projectSecrets))
 			}
 			for k, v := range projectSecrets {
+				secretValues = append(secretValues, v)
 				if _, exists := step.Env[k]; !exists {
 					step.Env[k] = v
 				}
@@ -364,7 +367,7 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 
 	// Run step
 	log.Info("running step", "name", step.Name)
-	result := w.runner.RunStep(ctx, step, wsPath)
+	result := w.runner.RunStep(ctx, step, wsPath, secretValues)
 
 	// Persist result
 	if err := w.steps.SetFinished(ctx, step.ID, result.Status, result.ExitCode, result.LogPath); err != nil {

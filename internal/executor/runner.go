@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
@@ -38,7 +39,8 @@ type StepResult struct {
 
 // RunStep executes a build step inside a container and returns the result.
 // The caller is responsible for updating the database with the result.
-func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, workspacePath string) *StepResult {
+// secretValues contains the raw secret values to mask in log output.
+func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, workspacePath string, secretValues []string) *StepResult {
 	// Set up log directory and writer.
 	logDir := filepath.Join(filepath.Dir(workspacePath), "logs")
 	if err := os.MkdirAll(logDir, 0755); err != nil {
@@ -79,6 +81,10 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 		}
 	}
 
+	// Wrap log writer with secret masking so secret values are never written to logs.
+	var output io.Writer = logWriter
+	output = NewMaskingWriter(output, secretValues)
+
 	opts := RunOptions{
 		Image:    image,
 		Commands: step.Commands,
@@ -88,7 +94,7 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 			{Source: workspacePath, Target: "/workspace"},
 		},
 		Timeout: timeout,
-		Output:  logWriter,
+		Output:  output,
 	}
 
 	result, runErr := r.executor.Run(ctx, opts)

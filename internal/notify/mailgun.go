@@ -46,8 +46,7 @@ func NewMailgunNotifier(config map[string]string) (*MailgunNotifier, error) {
 
 // Send sends a build notification email via the Mailgun API.
 func (n *MailgunNotifier) Send(ctx context.Context, event BuildEvent) error {
-	subject := fmt.Sprintf("[FeatherCI] %s Build #%d %s",
-		event.ProjectName, event.BuildNumber, event.Status)
+	subject := event.EmailSubject()
 
 	body, err := renderEmailHTML(event)
 	if err != nil {

@@ -24,11 +24,11 @@ var emailTemplate = template.Must(template.New("email").Parse(`<!DOCTYPE html>
       <table width="100%" cellpadding="4" cellspacing="0" style="font-size:14px;color:#374151">
         <tr>
           <td style="font-weight:600;width:120px;vertical-align:top">Project</td>
-          <td>{{.ProjectName}}</td>
+          <td>{{if .ProjectURL}}<a href="{{.ProjectURL}}" style="color:#4f46e5;text-decoration:none">{{.ProjectName}}</a>{{else}}{{.ProjectName}}{{end}}</td>
         </tr>
         <tr>
           <td style="font-weight:600;vertical-align:top">Build</td>
-          <td>#{{.BuildNumber}}</td>
+          <td>{{if .BuildURL}}<a href="{{.BuildURL}}" style="color:#4f46e5;text-decoration:none">#{{.BuildNumber}}</a>{{else}}#{{.BuildNumber}}{{end}}</td>
         </tr>
         <tr>
           <td style="font-weight:600;vertical-align:top">Branch</td>
@@ -36,7 +36,7 @@ var emailTemplate = template.Must(template.New("email").Parse(`<!DOCTYPE html>
         </tr>
         <tr>
           <td style="font-weight:600;vertical-align:top">Commit</td>
-          <td><code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:13px">{{.ShortSHA}}</code></td>
+          <td>{{if .CommitURL}}<a href="{{.CommitURL}}" style="color:#4f46e5;text-decoration:none"><code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:13px">{{.ShortSHA}}</code></a>{{else}}<code style="background:#f3f4f6;padding:2px 6px;border-radius:4px;font-size:13px">{{.ShortSHA}}</code>{{end}}</td>
         </tr>
         <tr>
           <td style="font-weight:600;vertical-align:top">Message</td>
@@ -60,7 +60,15 @@ var emailTemplate = template.Must(template.New("email").Parse(`<!DOCTYPE html>
   </tr>
   <tr>
     <td style="padding:16px 24px;background:#f9fafb;font-size:12px;color:#9ca3af;text-align:center">
-      Sent by FeatherCI
+      Sent by
+      <!--[if !mso]><!-->
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2" xmlns="http://www.w3.org/2000/svg" style="vertical-align:middle;margin:0 2px">
+        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+        <line x1="16" y1="8" x2="2" y2="22"/>
+        <line x1="17.5" y1="15" x2="9" y2="15"/>
+      </svg>
+      <!--<![endif]-->
+      <span style="color:#0ea5e9;font-weight:600">FeatherCI</span>
     </td>
   </tr>
 </table>

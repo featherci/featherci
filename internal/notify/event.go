@@ -1,7 +1,10 @@
 // Package notify provides a pluggable notification system for build events.
 package notify
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // BuildEvent contains the information sent in a build notification.
 type BuildEvent struct {
@@ -14,6 +17,8 @@ type BuildEvent struct {
 	CommitAuthor  string
 	Duration      time.Duration
 	BuildURL      string
+	ProjectURL    string // Link to the project page in FeatherCI
+	CommitURL     string // Link to view the commit on the git provider
 }
 
 // ShortSHA returns the first 8 characters of the commit SHA.
@@ -43,6 +48,24 @@ func (e BuildEvent) IsSuccess() bool {
 // IsCancelled returns true if the build was cancelled.
 func (e BuildEvent) IsCancelled() bool {
 	return e.Status == "cancelled"
+}
+
+// StatusLabel returns a human-friendly label for the build status.
+func (e BuildEvent) StatusLabel() string {
+	switch e.Status {
+	case "success":
+		return "Passed"
+	case "cancelled":
+		return "Cancelled"
+	default:
+		return "Failed"
+	}
+}
+
+// EmailSubject returns a consistent email subject line.
+func (e BuildEvent) EmailSubject() string {
+	return fmt.Sprintf("%s %s #%d %s in FeatherCI",
+		e.StatusEmoji(), e.ProjectName, e.BuildNumber, e.StatusLabel())
 }
 
 // StatusEmoji returns an emoji for the build status.

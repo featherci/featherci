@@ -51,12 +51,12 @@ func TestMigrate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrentVersion() error = %v", err)
 	}
-	if version != 2 {
-		t.Errorf("CurrentVersion() = %d, want 2", version)
+	if version != 3 {
+		t.Errorf("CurrentVersion() = %d, want 3", version)
 	}
 
 	// Verify tables exist
-	tables := []string{"users", "projects", "project_users", "secrets", "builds", "build_steps", "step_dependencies", "workers"}
+	tables := []string{"users", "projects", "project_users", "secrets", "builds", "build_steps", "step_dependencies", "workers", "sessions"}
 	for _, table := range tables {
 		var count int
 		err := db.Get(&count, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=?", table)
@@ -88,8 +88,8 @@ func TestMigrateIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrentVersion() error = %v", err)
 	}
-	if version != 2 {
-		t.Errorf("CurrentVersion() = %d, want 2", version)
+	if version != 3 {
+		t.Errorf("CurrentVersion() = %d, want 3", version)
 	}
 }
 
@@ -114,8 +114,8 @@ func TestRollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrentVersion() error = %v", err)
 	}
-	if version != 1 {
-		t.Errorf("CurrentVersion() after rollback = %d, want 1", version)
+	if version != 2 {
+		t.Errorf("CurrentVersion() after rollback = %d, want 2", version)
 	}
 }
 
@@ -183,6 +183,8 @@ func TestIndexesExist(t *testing.T) {
 		"idx_project_users_user_id",
 		"idx_secrets_project_id",
 		"idx_users_username",
+		"idx_sessions_user_id",
+		"idx_sessions_expires_at",
 	}
 
 	for _, idx := range indexes {
@@ -209,8 +211,8 @@ func TestPendingMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PendingMigrations() error = %v", err)
 	}
-	if pending != 2 {
-		t.Errorf("PendingMigrations() before migrate = %d, want 2", pending)
+	if pending != 3 {
+		t.Errorf("PendingMigrations() before migrate = %d, want 3", pending)
 	}
 
 	// After migrations

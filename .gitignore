@@ -1,0 +1,42 @@
+# Binaries
+/bin/
+featherci
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment (keep .env.example)
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Node (for Tailwind)
+node_modules/
+web/tailwind/node_modules/
+
+# Build cache
+.cache/
+cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+coverage.out
+coverage.html
+
+# Temporary files
+tmp/
+*.tmp
+*.log

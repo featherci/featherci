@@ -1,0 +1,35 @@
+{{define "build-steps"}}
+<div id="build-steps"
+    {{if not .Build.IsTerminal}}
+    hx-get="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds/{{.Build.BuildNumber}}/steps"
+    hx-trigger="every 5s"
+    hx-swap="outerHTML"
+    {{end}}>
+    {{if .Build.Steps}}
+    <div class="divide-y divide-gray-200">
+        {{range .Build.Steps}}
+        <div class="px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                {{template "status-dot" (printf "%s" .Status)}}
+                <div>
+                    <p class="text-sm font-medium text-gray-900">{{.Name}}</p>
+                    {{if .Image}}<p class="text-xs text-gray-500">{{deref .Image}}</p>{{end}}
+                </div>
+            </div>
+            <div class="text-sm text-gray-500">
+                {{if .StartedAt}}
+                {{duration .Duration}}
+                {{else}}
+                —
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+    </div>
+    {{else}}
+    <div class="px-6 py-8 text-center text-sm text-gray-500">
+        No steps defined for this build.
+    </div>
+    {{end}}
+</div>
+{{end}}

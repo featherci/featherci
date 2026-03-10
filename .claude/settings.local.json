@@ -6,7 +6,12 @@
       "Bash(go get:*)",
       "Bash(go mod:*)",
       "Bash(go doc:*)",
-      "Bash(go build:*)"
+      "Bash(go build:*)",
+      "Bash(find /Users/andy/Developer/featherci -type f \\\\\\( -name \"*.md\" -o -name \"*.txt\" \\\\\\) 2>/dev/null | grep -v node_modules | grep -v \".git\")",
+      "Bash(npx tailwindcss:*)",
+      "Bash(ls node_modules/.bin/tailwind* 2>/dev/null; cat package.json 2>/dev/null | head -20; which tailwindcss 2>/dev/null)",
+      "Bash(tailwindcss -i web/static/css/input.css -o web/static/css/main.css --minify 2>&1)",
+      "Bash(make css:*)"
     ]
   }
 }

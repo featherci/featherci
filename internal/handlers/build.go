@@ -7,15 +7,36 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/featherci/featherci/internal/middleware"
 	"github.com/featherci/featherci/internal/models"
+	"github.com/featherci/featherci/internal/templates"
 )
+
+const buildsPerPage = 20
+
+// BuildListPageData holds data for the build list page.
+type BuildListPageData struct {
+	User       *models.User
+	Project    *models.Project
+	Builds     []*models.Build
+	Page       int
+	TotalPages int
+}
+
+// BuildShowPageData holds data for the build detail page.
+type BuildShowPageData struct {
+	User    *models.User
+	Project *models.Project
+	Build   *models.Build
+}
 
 // BuildHandler handles build-related HTTP requests.
 type BuildHandler struct {
-	projects models.ProjectRepository
-	builds   models.BuildRepository
-	steps    models.BuildStepRepository
-	logger   *slog.Logger
+	projects  models.ProjectRepository
+	builds    models.BuildRepository
+	steps     models.BuildStepRepository
+	templates *templates.Engine
+	logger    *slog.Logger
 }
 
 // NewBuildHandler creates a new BuildHandler.
@@ -23,13 +44,226 @@ func NewBuildHandler(
 	projects models.ProjectRepository,
 	builds models.BuildRepository,
 	steps models.BuildStepRepository,
+	tmpl *templates.Engine,
 	logger *slog.Logger,
 ) *BuildHandler {
 	return &BuildHandler{
-		projects: projects,
-		builds:   builds,
-		steps:    steps,
-		logger:   logger,
+		projects:  projects,
+		builds:    builds,
+		steps:     steps,
+		templates: tmpl,
+		logger:    logger,
+	}
+}
+
+// lookupProject finds a project by namespace/name, trying all providers.
+func (h *BuildHandler) lookupProject(r *http.Request) (*models.Project, error) {
+	ctx := r.Context()
+	namespace := r.PathValue("namespace")
+	name := r.PathValue("name")
+	fullName := namespace + "/" + name
+
+	var project *models.Project
+	var lastErr error
+	for _, provider := range []string{"github", "gitlab", "gitea"} {
+		p, err := h.projects.GetByFullName(ctx, provider, fullName)
+		if err == nil {
+			project = p
+			break
+		}
+		lastErr = err
+		if !errors.Is(err, models.ErrNotFound) {
+			return nil, err
+		}
+	}
+	if project == nil {
+		return nil, lastErr
+	}
+	return project, nil
+}
+
+// List shows all builds for a project.
+// GET /projects/{namespace}/{name}/builds
+func (h *BuildHandler) List(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	project, err := h.lookupProject(r)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get project", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Parse page number
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		if parsed, err := strconv.Atoi(p); err == nil && parsed > 0 {
+			page = parsed
+		}
+	}
+
+	offset := (page - 1) * buildsPerPage
+
+	// Get total count for pagination
+	total, err := h.builds.CountByProject(ctx, project.ID)
+	if err != nil {
+		h.logger.Error("failed to count builds", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	totalPages := (total + buildsPerPage - 1) / buildsPerPage
+	if totalPages == 0 {
+		totalPages = 1
+	}
+
+	builds, err := h.builds.ListByProject(ctx, project.ID, buildsPerPage, offset)
+	if err != nil {
+		h.logger.Error("failed to list builds", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	data := BuildListPageData{
+		User:       user,
+		Project:    project,
+		Builds:     builds,
+		Page:       page,
+		TotalPages: totalPages,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := h.templates.Render(w, "pages/builds/list.html", data); err != nil {
+		h.logger.Error("failed to render build list", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// Show displays a build's details.
+// GET /projects/{namespace}/{name}/builds/{number}
+func (h *BuildHandler) Show(w http.ResponseWriter, r *http.Request) {
+	user := middleware.UserFromContext(r.Context())
+	if user == nil {
+		http.Redirect(w, r, "/", http.StatusTemporaryRedirect)
+		return
+	}
+
+	project, err := h.lookupProject(r)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get project", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	ctx := r.Context()
+	numberStr := r.PathValue("number")
+	buildNumber, err := strconv.Atoi(numberStr)
+	if err != nil {
+		http.Error(w, "Bad Request: invalid build number", http.StatusBadRequest)
+		return
+	}
+
+	build, err := h.builds.GetByNumber(ctx, project.ID, buildNumber)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get build", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Load steps
+	steps, err := h.steps.ListByBuild(ctx, build.ID)
+	if err != nil {
+		h.logger.Error("failed to list build steps", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	build.Steps = steps
+
+	data := BuildShowPageData{
+		User:    user,
+		Project: project,
+		Build:   build,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := h.templates.Render(w, "pages/builds/show.html", data); err != nil {
+		h.logger.Error("failed to render build show", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
+}
+
+// StepsFragment returns just the build steps partial for HTMX polling.
+// GET /projects/{namespace}/{name}/builds/{number}/steps
+func (h *BuildHandler) StepsFragment(w http.ResponseWriter, r *http.Request) {
+	project, err := h.lookupProject(r)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get project", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	ctx := r.Context()
+	numberStr := r.PathValue("number")
+	buildNumber, err := strconv.Atoi(numberStr)
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	build, err := h.builds.GetByNumber(ctx, project.ID, buildNumber)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get build", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	steps, err := h.steps.ListByBuild(ctx, build.ID)
+	if err != nil {
+		h.logger.Error("failed to list build steps", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	build.Steps = steps
+
+	data := BuildShowPageData{
+		Build:   build,
+		Project: project,
+	}
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	// Stop polling if build is terminal
+	if build.IsTerminal() {
+		w.Header().Set("HX-Trigger", "buildComplete")
+	}
+	if err := h.templates.RenderComponent(w, "build-steps", data); err != nil {
+		h.logger.Error("failed to render build steps fragment", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
 
@@ -38,32 +272,21 @@ func NewBuildHandler(
 func (h *BuildHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	namespace := r.PathValue("namespace")
-	name := r.PathValue("name")
-	numberStr := r.PathValue("number")
-
-	buildNumber, err := strconv.Atoi(numberStr)
+	project, err := h.lookupProject(r)
 	if err != nil {
-		http.Error(w, "Bad Request: invalid build number", http.StatusBadRequest)
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found: project not found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get project", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	// Look up project by namespace/name — try all providers
-	fullName := namespace + "/" + name
-	var project *models.Project
-	for _, provider := range []string{"github", "gitlab", "gitea"} {
-		project, err = h.projects.GetByFullName(ctx, provider, fullName)
-		if err == nil {
-			break
-		}
-		if !errors.Is(err, models.ErrNotFound) {
-			h.logger.Error("failed to get project", "error", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-	}
-	if project == nil {
-		http.Error(w, "Not Found: project not found", http.StatusNotFound)
+	numberStr := r.PathValue("number")
+	buildNumber, err := strconv.Atoi(numberStr)
+	if err != nil {
+		http.Error(w, "Bad Request: invalid build number", http.StatusBadRequest)
 		return
 	}
 

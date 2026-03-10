@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/featherci/featherci/internal/auth"
 	"github.com/featherci/featherci/internal/middleware"
@@ -16,23 +15,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
-// BuildSummary holds a summary of a build for display.
-type BuildSummary struct {
-	ID          int64
-	ProjectID   int64
-	ProjectName string
-	Status      string
-	Branch      string
-	CommitSHA   string
-	Duration    time.Duration
-	StartedAt   time.Time
-}
-
 // ProjectHandler handles project-related HTTP endpoints.
 type ProjectHandler struct {
 	projects     models.ProjectRepository
 	projectUsers models.ProjectUserRepository
 	users        models.UserRepository
+	builds       models.BuildRepository
 	providers    *auth.Registry
 	templates    *templates.Engine
 	logger       *slog.Logger
@@ -43,6 +31,7 @@ func NewProjectHandler(
 	projects models.ProjectRepository,
 	projectUsers models.ProjectUserRepository,
 	users models.UserRepository,
+	builds models.BuildRepository,
 	providers *auth.Registry,
 	templates *templates.Engine,
 	logger *slog.Logger,
@@ -51,6 +40,7 @@ func NewProjectHandler(
 		projects:     projects,
 		projectUsers: projectUsers,
 		users:        users,
+		builds:       builds,
 		providers:    providers,
 		templates:    templates,
 		logger:       logger,
@@ -89,7 +79,7 @@ type RepositoryItem struct {
 type ProjectShowPageData struct {
 	User         *models.User
 	Project      *models.Project
-	RecentBuilds []BuildSummary
+	RecentBuilds []*models.Build
 	CanManage    bool
 	DevMode      bool
 }
@@ -320,10 +310,17 @@ func (h *ProjectHandler) Show(w http.ResponseWriter, r *http.Request) {
 		canManage = true
 	}
 
+	// Load recent builds
+	recentBuilds, err := h.builds.ListByProject(ctx, project.ID, 10, 0)
+	if err != nil {
+		h.logger.Error("failed to load recent builds", "error", err)
+		recentBuilds = nil
+	}
+
 	data := ProjectShowPageData{
 		User:         user,
 		Project:      project,
-		RecentBuilds: nil, // TODO: fetch recent builds
+		RecentBuilds: recentBuilds,
 		CanManage:    canManage,
 		DevMode:      false,
 	}

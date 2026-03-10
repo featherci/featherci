@@ -110,6 +110,12 @@ func (e *Engine) Render(w io.Writer, name string, data any) error {
 	return pageTemplate.ExecuteTemplate(w, name, data)
 }
 
+// RenderComponent renders a named define block from the base templates (layouts/components).
+// Used for HTMX fragment responses that return partial HTML.
+func (e *Engine) RenderComponent(w io.Writer, name string, data any) error {
+	return e.base.ExecuteTemplate(w, name, data)
+}
+
 // templateFuncs returns the template function map.
 func templateFuncs() template.FuncMap {
 	return template.FuncMap{

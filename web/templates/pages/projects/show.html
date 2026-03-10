@@ -112,51 +112,42 @@
     <div class="card">
         <div class="card-header flex items-center justify-between">
             <h2 class="text-lg font-medium text-gray-900">Recent Builds</h2>
+            {{if .RecentBuilds}}
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds" class="text-sm text-feather-600 hover:text-feather-700">View all</a>
+            {{end}}
         </div>
         {{if .RecentBuilds}}
         <div class="overflow-x-auto">
             <table class="table">
                 <thead>
                     <tr>
+                        <th>#</th>
                         <th>Status</th>
                         <th>Branch</th>
                         <th>Commit</th>
                         <th>Duration</th>
-                        <th>Started</th>
+                        <th>Created</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     {{range .RecentBuilds}}
-                    <tr>
+                    <tr class="hover:bg-gray-50">
                         <td>
-                            {{if eq .Status "success"}}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Success
-                            </span>
-                            {{else if eq .Status "failure"}}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Failed
-                            </span>
-                            {{else if eq .Status "running"}}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Running
-                            </span>
-                            {{else}}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{.Status}}
-                            </span>
-                            {{end}}
+                            <a href="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/builds/{{.BuildNumber}}" class="text-feather-600 hover:text-feather-700 font-medium">
+                                #{{.BuildNumber}}
+                            </a>
                         </td>
-                        <td class="font-mono text-sm">{{.Branch}}</td>
+                        <td>{{template "status-badge" .}}</td>
+                        <td class="font-mono text-sm">{{deref .Branch}}</td>
                         <td>
-                            <a href="/builds/{{.ID}}" class="font-mono text-sm text-gray-600 hover:text-gray-900">
+                            <a href="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/builds/{{.BuildNumber}}" class="font-mono text-sm text-gray-600 hover:text-gray-900">
                                 {{truncate .CommitSHA 7}}
                             </a>
                         </td>
                         <td class="text-sm text-gray-500">
-                            {{if .Duration}}{{duration .Duration}}{{else}}-{{end}}
+                            {{if .StartedAt}}{{duration .Duration}}{{else}}—{{end}}
                         </td>
-                        <td class="text-sm text-gray-500">{{timeAgo .StartedAt}}</td>
+                        <td class="text-sm text-gray-500">{{timeAgo .CreatedAt}}</td>
                     </tr>
                     {{end}}
                 </tbody>

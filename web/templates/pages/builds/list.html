@@ -1,0 +1,94 @@
+{{template "base" .}}
+
+{{define "title"}}Builds - {{.Project.FullName}} - FeatherCI{{end}}
+
+{{define "content"}}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+                <a href="/projects" class="hover:text-gray-700">Projects</a>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}" class="hover:text-gray-700">{{.Project.Name}}</a>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span class="text-gray-900">Builds</span>
+            </nav>
+            <h1 class="text-2xl font-bold text-gray-900">Builds</h1>
+        </div>
+    </div>
+
+    <!-- Builds Table -->
+    <div class="card">
+        {{if .Builds}}
+        <div class="overflow-x-auto">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Status</th>
+                        <th>Branch</th>
+                        <th>Commit</th>
+                        <th>Message</th>
+                        <th>Duration</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {{range .Builds}}
+                    <tr class="hover:bg-gray-50">
+                        <td>
+                            <a href="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/builds/{{.BuildNumber}}" class="text-feather-600 hover:text-feather-700 font-medium">
+                                #{{.BuildNumber}}
+                            </a>
+                        </td>
+                        <td>{{template "status-badge" .}}</td>
+                        <td class="font-mono text-sm">{{deref .Branch}}</td>
+                        <td>
+                            <a href="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/builds/{{.BuildNumber}}" class="font-mono text-sm text-gray-600 hover:text-gray-900">
+                                {{truncate .CommitSHA 7}}
+                            </a>
+                        </td>
+                        <td class="text-sm text-gray-500 max-w-xs truncate">{{deref .CommitMessage}}</td>
+                        <td class="text-sm text-gray-500">
+                            {{if .StartedAt}}{{duration .Duration}}{{else}}—{{end}}
+                        </td>
+                        <td class="text-sm text-gray-500">{{timeAgo .CreatedAt}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {{if gt .TotalPages 1}}
+        <div class="card-body border-t border-gray-200 flex items-center justify-between">
+            <div class="text-sm text-gray-500">
+                Page {{.Page}} of {{.TotalPages}}
+            </div>
+            <div class="flex space-x-2">
+                {{if gt .Page 1}}
+                <a href="?page={{sub .Page 1}}" class="btn btn-secondary btn-sm">Previous</a>
+                {{end}}
+                {{if lt .Page .TotalPages}}
+                <a href="?page={{add .Page 1}}" class="btn btn-secondary btn-sm">Next</a>
+                {{end}}
+            </div>
+        </div>
+        {{end}}
+        {{else}}
+        <div class="card-body text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">No builds yet</h3>
+            <p class="mt-1 text-sm text-gray-500">Push a commit to trigger your first build.</p>
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}

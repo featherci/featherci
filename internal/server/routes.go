@@ -88,7 +88,13 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.Handle("POST /projects/{namespace}/{name}/settings", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Update)))
 	mux.Handle("POST /projects/{namespace}/{name}/delete", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Delete)))
 
-	// Build actions
+	// Builds
+	mux.Handle("GET /projects/{namespace}/{name}/builds",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.List)))
+	mux.Handle("GET /projects/{namespace}/{name}/builds/{number}",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.Show)))
+	mux.Handle("GET /projects/{namespace}/{name}/builds/{number}/steps",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.StepsFragment)))
 	mux.Handle("POST /projects/{namespace}/{name}/builds/{number}/cancel",
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.Cancel)))
 

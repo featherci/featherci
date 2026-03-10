@@ -117,6 +117,7 @@ type BuildRepository interface {
 	SetStarted(ctx context.Context, id int64) error
 	SetFinished(ctx context.Context, id int64, status BuildStatus) error
 	CancelBuild(ctx context.Context, id int64) error
+	CountByProject(ctx context.Context, projectID int64) (int, error)
 }
 
 // SQLiteBuildRepository implements BuildRepository using SQLite.
@@ -328,6 +329,14 @@ func (r *SQLiteBuildRepository) SetFinished(ctx context.Context, id int64, statu
 		return ErrNotFound
 	}
 	return nil
+}
+
+// CountByProject returns the total number of builds for a project.
+func (r *SQLiteBuildRepository) CountByProject(ctx context.Context, projectID int64) (int, error) {
+	var count int
+	query := `SELECT COUNT(*) FROM builds WHERE project_id = ?`
+	err := r.db.GetContext(ctx, &count, query, projectID)
+	return count, err
 }
 
 // CancelBuild cancels a build if it is still in a non-terminal state.

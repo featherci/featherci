@@ -1,0 +1,84 @@
+{{template "base" .}}
+
+{{define "title"}}Build #{{.Build.BuildNumber}} - {{.Project.FullName}} - FeatherCI{{end}}
+
+{{define "content"}}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+                <a href="/projects" class="hover:text-gray-700">Projects</a>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}" class="hover:text-gray-700">{{.Project.Name}}</a>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds" class="hover:text-gray-700">Builds</a>
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+                <span class="text-gray-900">#{{.Build.BuildNumber}}</span>
+            </nav>
+            <div class="flex items-center space-x-3">
+                <h1 class="text-2xl font-bold text-gray-900">Build #{{.Build.BuildNumber}}</h1>
+                {{template "status-badge" .Build}}
+            </div>
+        </div>
+        <div>
+            {{if not .Build.IsTerminal}}
+            <form method="POST" action="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds/{{.Build.BuildNumber}}/cancel" class="inline">
+                <button type="submit" class="btn btn-secondary text-red-600 hover:text-red-700">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                    Cancel
+                </button>
+            </form>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- Build Info -->
+    <div class="card">
+        <div class="card-body">
+            <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Commit</dt>
+                    <dd class="mt-1 text-sm font-mono text-gray-900">{{truncate .Build.CommitSHA 12}}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Branch</dt>
+                    <dd class="mt-1 text-sm font-mono text-gray-900">{{deref .Build.Branch}}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Author</dt>
+                    <dd class="mt-1 text-sm text-gray-900">{{deref .Build.CommitAuthor}}</dd>
+                </div>
+                <div>
+                    <dt class="text-sm font-medium text-gray-500">Duration</dt>
+                    <dd class="mt-1 text-sm text-gray-900">
+                        {{if .Build.StartedAt}}{{duration .Build.Duration}}{{else}}—{{end}}
+                    </dd>
+                </div>
+            </dl>
+            {{if .Build.CommitMessage}}
+            <div class="mt-4 pt-4 border-t border-gray-200">
+                <dt class="text-sm font-medium text-gray-500">Message</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{deref .Build.CommitMessage}}</dd>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    <!-- Steps -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="text-lg font-medium text-gray-900">Steps</h2>
+        </div>
+        {{template "build-steps" .}}
+    </div>
+</div>
+{{end}}

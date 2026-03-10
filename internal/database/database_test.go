@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+// totalMigrations returns the number of registered migrations.
+func totalMigrations() int {
+	return len(migrations)
+}
+
 func TestOpen(t *testing.T) {
 	db, err := Open(":memory:")
 	if err != nil {
@@ -51,8 +56,9 @@ func TestMigrate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrentVersion() error = %v", err)
 	}
-	if version != 3 {
-		t.Errorf("CurrentVersion() = %d, want 3", version)
+	expected := totalMigrations()
+	if version != expected {
+		t.Errorf("CurrentVersion() = %d, want %d", version, expected)
 	}
 
 	// Verify tables exist
@@ -88,8 +94,8 @@ func TestMigrateIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrentVersion() error = %v", err)
 	}
-	if version != 3 {
-		t.Errorf("CurrentVersion() = %d, want 3", version)
+	if version != totalMigrations() {
+		t.Errorf("CurrentVersion() = %d, want %d", version, totalMigrations())
 	}
 }
 
@@ -114,8 +120,9 @@ func TestRollback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CurrentVersion() error = %v", err)
 	}
-	if version != 2 {
-		t.Errorf("CurrentVersion() after rollback = %d, want 2", version)
+	expected := totalMigrations() - 1
+	if version != expected {
+		t.Errorf("CurrentVersion() after rollback = %d, want %d", version, expected)
 	}
 }
 
@@ -211,8 +218,8 @@ func TestPendingMigrations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PendingMigrations() error = %v", err)
 	}
-	if pending != 3 {
-		t.Errorf("PendingMigrations() before migrate = %d, want 3", pending)
+	if pending != totalMigrations() {
+		t.Errorf("PendingMigrations() before migrate = %d, want %d", pending, totalMigrations())
 	}
 
 	// After migrations

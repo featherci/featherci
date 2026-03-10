@@ -19,6 +19,7 @@ import (
 	"github.com/featherci/featherci/internal/models"
 	"github.com/featherci/featherci/internal/services"
 	"github.com/featherci/featherci/internal/templates"
+	"github.com/featherci/featherci/internal/status"
 	"github.com/featherci/featherci/internal/worker"
 	"github.com/featherci/featherci/internal/workflow"
 )
@@ -84,10 +85,13 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	secrets := models.NewSecretRepository(db.DB)
 	secretService := services.NewSecretService(secrets, encryptor)
 
+	// Initialize commit status service
+	statusService := status.NewStatusService(cfg, tokenSource, logger)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(providers, users, sessions, cfg)
 	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, builds, secrets, providers, tmpl, logger)
-	webhookHandler := handlers.NewWebhookHandler(projects, logger, buildCreator, fileFetcher, tokenSource, parser)
+	webhookHandler := handlers.NewWebhookHandler(projects, logger, buildCreator, fileFetcher, tokenSource, parser, statusService)
 	buildHandler := handlers.NewBuildHandler(projects, builds, steps, projectUsers, tmpl, logger)
 	secretHandler := handlers.NewSecretHandler(secretService, projects, projectUsers, tmpl, logger)
 

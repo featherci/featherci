@@ -215,6 +215,10 @@ func (m *mockWorkspace) Create(projectID, buildID int64) (string, error) {
 	return path, nil
 }
 
+type mockStatusPoster struct{}
+
+func (m *mockStatusPoster) PostBuildStatus(_ context.Context, _ *models.Project, _ *models.Build) {}
+
 // --- Helpers ---
 
 func makeTestDeps() (*mockStepRepo, *mockBuildRepo, *mockProjectRepo, *mockWorkerRepo, *mockTokenSource, *mockGitService, *mockWorkspace) {
@@ -243,7 +247,7 @@ func makeWorker(
 		HeartbeatInterval: 5 * time.Second,
 		MaxConcurrent:     2,
 	}
-	w := New(cfg, steps, builds, projects, workers, tokens, nil, git, ws, runner, nil)
+	w := New(cfg, steps, builds, projects, workers, tokens, nil, git, ws, runner, &mockStatusPoster{}, nil)
 	w.id = "test-worker"
 	return w
 }
@@ -309,7 +313,7 @@ func TestSkipsWhenAtCapacity(t *testing.T) {
 	mockExec := &noopExecutor{exitCode: 0}
 	runner := executor.NewStepRunner(mockExec, nil)
 
-	w := New(cfg, steps, builds, projects, workers, tokens, nil, gitSvc, ws, runner, nil)
+	w := New(cfg, steps, builds, projects, workers, tokens, nil, gitSvc, ws, runner, &mockStatusPoster{}, nil)
 	w.id = "test-worker"
 
 	// Fill the semaphore

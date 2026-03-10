@@ -69,6 +69,11 @@ type workspaceManager interface {
 	Create(projectID, buildID int64) (string, error)
 }
 
+// statusPoster posts commit statuses to git providers.
+type statusPoster interface {
+	PostBuildStatus(ctx context.Context, project *models.Project, build *models.Build)
+}
+
 // Config holds worker configuration.
 type Config struct {
 	PollInterval      time.Duration
@@ -98,6 +103,7 @@ type Worker struct {
 	git       gitService
 	workspace workspaceManager
 	runner    *executor.StepRunner
+	status    statusPoster
 	sem       chan struct{}
 	wg        sync.WaitGroup
 	logger    *slog.Logger
@@ -115,6 +121,7 @@ func New(
 	git gitService,
 	workspace workspaceManager,
 	runner *executor.StepRunner,
+	status statusPoster,
 	logger *slog.Logger,
 ) *Worker {
 	if logger == nil {
@@ -131,6 +138,7 @@ func New(
 		git:       git,
 		workspace: workspace,
 		runner:    runner,
+		status:    status,
 		sem:       make(chan struct{}, cfg.MaxConcurrent),
 		logger:    logger,
 	}
@@ -250,6 +258,10 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 		if err := w.builds.SetStarted(ctx, build.ID); err != nil {
 			log.Error("failed to start build", "error", err)
 		}
+		// Post running commit status (fire-and-forget)
+		runningBuild := *build
+		runningBuild.Status = models.BuildStatusRunning
+		go w.status.PostBuildStatus(context.Background(), project, &runningBuild)
 	}
 
 	// Set up workspace: reuse if already exists
@@ -378,6 +390,15 @@ func (w *Worker) recalcBuildStatus(ctx context.Context, buildID int64, log *slog
 		if newStatus == models.BuildStatusSuccess || newStatus == models.BuildStatusFailure {
 			if err := w.builds.SetFinished(ctx, buildID, newStatus); err != nil {
 				log.Error("failed to finish build", "error", err)
+			}
+			// Post final commit status (fire-and-forget)
+			project, projErr := w.projects.GetByID(ctx, build.ProjectID)
+			if projErr != nil {
+				log.Error("failed to load project for status post", "error", projErr)
+			} else {
+				finishedBuild := *build
+				finishedBuild.Status = newStatus
+				go w.status.PostBuildStatus(context.Background(), project, &finishedBuild)
 			}
 		} else {
 			if err := w.builds.UpdateStatus(ctx, buildID, newStatus); err != nil {

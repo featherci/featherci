@@ -33,17 +33,23 @@ type workflowParser interface {
 	ParseAndValidate(content []byte) (*workflow.Workflow, error)
 }
 
+// statusPoster posts commit statuses to git providers.
+type statusPoster interface {
+	PostBuildStatus(ctx context.Context, project *models.Project, build *models.Build)
+}
+
 // WebhookHandler handles incoming webhook requests from Git providers.
 type WebhookHandler struct {
-	projects     models.ProjectRepository
-	github       webhook.Handler
-	gitlab       webhook.Handler
-	gitea        webhook.Handler
-	logger       *slog.Logger
-	buildCreator buildCreator
-	fileFetcher  fileFetcher
-	tokenSource  webhookTokenSource
-	parser       workflowParser
+	projects      models.ProjectRepository
+	github        webhook.Handler
+	gitlab        webhook.Handler
+	gitea         webhook.Handler
+	logger        *slog.Logger
+	buildCreator  buildCreator
+	fileFetcher   fileFetcher
+	tokenSource   webhookTokenSource
+	parser        workflowParser
+	statusService statusPoster
 }
 
 // NewWebhookHandler creates a new webhook handler.
@@ -54,17 +60,19 @@ func NewWebhookHandler(
 	ff fileFetcher,
 	ts webhookTokenSource,
 	p workflowParser,
+	ss statusPoster,
 ) *WebhookHandler {
 	return &WebhookHandler{
-		projects:     projects,
-		github:       webhook.NewGitHubHandler(),
-		gitlab:       webhook.NewGitLabHandler(),
-		gitea:        webhook.NewGiteaHandler(),
-		logger:       logger,
-		buildCreator: bc,
-		fileFetcher:  ff,
-		tokenSource:  ts,
-		parser:       p,
+		projects:      projects,
+		github:        webhook.NewGitHubHandler(),
+		gitlab:        webhook.NewGitLabHandler(),
+		gitea:         webhook.NewGiteaHandler(),
+		logger:        logger,
+		buildCreator:  bc,
+		fileFetcher:   ff,
+		tokenSource:   ts,
+		parser:        p,
+		statusService: ss,
 	}
 }
 
@@ -259,6 +267,9 @@ func (h *WebhookHandler) handleWebhook(w http.ResponseWriter, r *http.Request, p
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
+	// Post pending commit status (fire-and-forget)
+	go h.statusService.PostBuildStatus(context.Background(), project, build)
 
 	h.logger.Info("build created from webhook",
 		"project_id", project.ID,

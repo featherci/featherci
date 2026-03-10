@@ -2,7 +2,7 @@
 <div id="build-steps"
     {{if not .Build.IsTerminal}}
     hx-get="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds/{{.Build.BuildNumber}}/steps"
-    hx-trigger="every 5s"
+    hx-trigger="every 1s"
     hx-swap="outerHTML"
     {{end}}>
     {{template "pipeline-graph" .}}

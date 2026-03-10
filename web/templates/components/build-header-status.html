@@ -1,0 +1,75 @@
+{{define "build-header-status"}}
+<div id="build-header-status" class="flex items-center justify-between">
+    <div>
+        <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+            <a href="/projects" class="hover:text-gray-700">Projects</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}" class="hover:text-gray-700">{{.Project.Name}}</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds" class="hover:text-gray-700">Builds</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="text-gray-900">#{{.Build.BuildNumber}}</span>
+        </nav>
+        <div class="flex items-center space-x-3">
+            <h1 class="text-2xl font-bold text-gray-900">Build #{{.Build.BuildNumber}}</h1>
+            {{template "status-badge" .Build}}
+        </div>
+    </div>
+    <div>
+        {{if not .Build.IsTerminal}}
+        <form method="POST" action="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds/{{.Build.BuildNumber}}/cancel" class="inline">
+            <button type="submit" class="btn btn-secondary text-red-600 hover:text-red-700">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                Cancel
+            </button>
+        </form>
+        {{end}}
+    </div>
+</div>
+{{end}}
+
+{{define "build-header-status-oob"}}
+<div id="build-header-status" hx-swap-oob="true" class="flex items-center justify-between">
+    <div>
+        <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-2">
+            <a href="/projects" class="hover:text-gray-700">Projects</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}" class="hover:text-gray-700">{{.Project.Name}}</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds" class="hover:text-gray-700">Builds</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="text-gray-900">#{{.Build.BuildNumber}}</span>
+        </nav>
+        <div class="flex items-center space-x-3">
+            <h1 class="text-2xl font-bold text-gray-900">Build #{{.Build.BuildNumber}}</h1>
+            {{template "status-badge" .Build}}
+        </div>
+    </div>
+    <div>
+        {{if not .Build.IsTerminal}}
+        <form method="POST" action="/projects/{{.Project.Namespace}}/{{.Project.Name}}/builds/{{.Build.BuildNumber}}/cancel" class="inline">
+            <button type="submit" class="btn btn-secondary text-red-600 hover:text-red-700">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                Cancel
+            </button>
+        </form>
+        {{end}}
+    </div>
+</div>
+{{end}}

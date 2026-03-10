@@ -181,7 +181,7 @@ func mapStepStatus(s models.StepStatus) CommitState {
 // mapBuildStatus converts a FeatherCI build status to a normalized commit state.
 func mapBuildStatus(s models.BuildStatus) CommitState {
 	switch s {
-	case models.BuildStatusPending:
+	case models.BuildStatusPending, models.BuildStatusWaitingApproval:
 		return StatePending
 	case models.BuildStatusRunning:
 		return StateRunning

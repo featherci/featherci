@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,12 +34,18 @@ type BuildShowPageData struct {
 	Build   *models.Build
 }
 
+// buildNotifier sends notifications when builds reach terminal state.
+type buildNotifier interface {
+	NotifyBuild(ctx context.Context, build *models.Build, project *models.Project) error
+}
+
 // BuildHandler handles build-related HTTP requests.
 type BuildHandler struct {
 	projects     models.ProjectRepository
 	builds       models.BuildRepository
 	steps        models.BuildStepRepository
 	projectUsers models.ProjectUserRepository
+	notifier     buildNotifier
 	templates    *templates.Engine
 	logger       *slog.Logger
 }
@@ -49,6 +56,7 @@ func NewBuildHandler(
 	builds models.BuildRepository,
 	steps models.BuildStepRepository,
 	projectUsers models.ProjectUserRepository,
+	notifier buildNotifier,
 	tmpl *templates.Engine,
 	logger *slog.Logger,
 ) *BuildHandler {
@@ -57,6 +65,7 @@ func NewBuildHandler(
 		builds:       builds,
 		steps:        steps,
 		projectUsers: projectUsers,
+		notifier:     notifier,
 		templates:    tmpl,
 		logger:       logger,
 	}
@@ -270,6 +279,11 @@ func (h *BuildHandler) StepsFragment(w http.ResponseWriter, r *http.Request) {
 	if err := h.templates.RenderComponent(w, "build-steps", data); err != nil {
 		h.logger.Error("failed to render build steps fragment", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	// OOB swap to keep the build header status badge and cancel button in sync
+	if err := h.templates.RenderComponent(w, "build-header-status-oob", data); err != nil {
+		h.logger.Error("failed to render build header status OOB", "error", err)
 	}
 }
 
@@ -308,14 +322,11 @@ func (h *BuildHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	buildURL := fmt.Sprintf("/projects/%s/%s/builds/%d", project.Namespace, project.Name, build.BuildNumber)
+
 	// Check if already terminal
 	if build.IsTerminal() {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]string{
-			"status":  "ignored",
-			"message": "build already in terminal state",
-		})
+		http.Redirect(w, r, buildURL, http.StatusSeeOther)
 		return
 	}
 
@@ -335,13 +346,19 @@ func (h *BuildHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("build cancelled", "build_id", build.ID, "build_number", build.BuildNumber)
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":       "cancelled",
-		"build_id":     build.ID,
-		"build_number": build.BuildNumber,
-	})
+	// Send cancellation notifications asynchronously
+	if h.notifier != nil {
+		cancelledBuild, err := h.builds.GetByID(ctx, build.ID)
+		if err == nil {
+			go func() {
+				if err := h.notifier.NotifyBuild(context.Background(), cancelledBuild, project); err != nil {
+					h.logger.Error("failed to send cancellation notification", "error", err)
+				}
+			}()
+		}
+	}
+
+	http.Redirect(w, r, buildURL, http.StatusSeeOther)
 }
 
 const defaultLogLimit = 500

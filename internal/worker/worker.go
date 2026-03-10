@@ -75,6 +75,11 @@ type statusPoster interface {
 	PostStepStatus(ctx context.Context, project *models.Project, build *models.Build, stepName string, stepStatus models.StepStatus)
 }
 
+// buildNotifier sends notifications when builds reach terminal state.
+type buildNotifier interface {
+	NotifyBuild(ctx context.Context, build *models.Build, project *models.Project) error
+}
+
 // Config holds worker configuration.
 type Config struct {
 	PollInterval      time.Duration
@@ -105,9 +110,20 @@ type Worker struct {
 	workspace workspaceManager
 	runner    *executor.StepRunner
 	status    statusPoster
+	notifier  buildNotifier
 	sem       chan struct{}
 	wg        sync.WaitGroup
 	logger    *slog.Logger
+
+	// cloneMu guards per-build workspace setup so only one step clones.
+	cloneMu   sync.Mutex
+	cloneOnce map[int64]*cloneState
+}
+
+// cloneState tracks per-build workspace clone, ensuring only one goroutine clones.
+type cloneState struct {
+	once sync.Once
+	err  error
 }
 
 // New creates a new Worker.
@@ -123,6 +139,7 @@ func New(
 	workspace workspaceManager,
 	runner *executor.StepRunner,
 	status statusPoster,
+	notifier buildNotifier,
 	logger *slog.Logger,
 ) *Worker {
 	if logger == nil {
@@ -140,7 +157,9 @@ func New(
 		workspace: workspace,
 		runner:    runner,
 		status:    status,
+		notifier:  notifier,
 		sem:       make(chan struct{}, cfg.MaxConcurrent),
+		cloneOnce: make(map[int64]*cloneState),
 		logger:    logger,
 	}
 }
@@ -276,35 +295,38 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 		}
 	}
 
-	// Set up workspace: reuse if already exists
+	// Set up workspace: use sync.Once per build so only one step clones
 	wsPath := w.workspace.GetPath(project.ID, build.ID)
-	if _, statErr := os.Stat(wsPath); os.IsNotExist(statErr) {
+	cs := w.getCloneState(build.ID)
+	cs.once.Do(func() {
+		if _, statErr := os.Stat(wsPath); !os.IsNotExist(statErr) {
+			return // workspace already exists from a previous build attempt
+		}
 		if _, err := w.workspace.Create(project.ID, build.ID); err != nil {
-			log.Error("failed to create workspace", "error", err)
-			w.failStepWithContext(ctx, step, project, build, log)
+			cs.err = fmt.Errorf("failed to create workspace: %w", err)
 			return
 		}
 
-		// Get token for cloning
 		token, err := w.tokens.TokenForProject(ctx, project.ID)
 		if err != nil {
-			log.Error("failed to get token", "error", err)
-			w.failStepWithContext(ctx, step, project, build, log)
+			cs.err = fmt.Errorf("failed to get token: %w", err)
 			return
 		}
 
-		// Clone and checkout
 		if err := w.git.Clone(ctx, project.CloneURL, token, project.Provider, wsPath); err != nil {
-			log.Error("clone failed", "error", err)
-			w.failStepWithContext(ctx, step, project, build, log)
+			cs.err = fmt.Errorf("clone failed: %w", err)
 			return
 		}
 
 		if err := w.git.Checkout(ctx, wsPath, build.CommitSHA); err != nil {
-			log.Error("checkout failed", "error", err)
-			w.failStepWithContext(ctx, step, project, build, log)
+			cs.err = fmt.Errorf("checkout failed: %w", err)
 			return
 		}
+	})
+	if cs.err != nil {
+		log.Error("workspace setup failed", "error", cs.err)
+		w.failStepWithContext(ctx, step, project, build, log)
+		return
 	}
 
 	// Inject project secrets into step env (secrets as base, step env overrides)
@@ -413,16 +435,54 @@ func (w *Worker) recalcBuildStatus(ctx context.Context, buildID int64, log *slog
 
 	if newStatus != build.Status {
 		if newStatus == models.BuildStatusSuccess || newStatus == models.BuildStatusFailure {
+			w.cleanupCloneOnce(buildID)
 			if err := w.builds.SetFinished(ctx, buildID, newStatus); err != nil {
 				log.Error("failed to finish build", "error", err)
 			}
-			// Step-level statuses are posted individually; no overall status needed
+			// Send build notifications asynchronously
+			if w.notifier != nil {
+				// Reload build to get updated timestamps
+				updatedBuild, err := w.builds.GetByID(ctx, buildID)
+				if err != nil {
+					log.Error("failed to reload build for notification", "error", err)
+				} else {
+					project, err := w.projects.GetByID(ctx, updatedBuild.ProjectID)
+					if err != nil {
+						log.Error("failed to load project for notification", "error", err)
+					} else {
+						go func() {
+							if err := w.notifier.NotifyBuild(context.Background(), updatedBuild, project); err != nil {
+								log.Error("failed to send build notification", "error", err)
+							}
+						}()
+					}
+				}
+			}
 		} else {
 			if err := w.builds.UpdateStatus(ctx, buildID, newStatus); err != nil {
 				log.Error("failed to update build status", "error", err)
 			}
 		}
 	}
+}
+
+// getCloneState returns the clone state for the given build, creating one if needed.
+func (w *Worker) getCloneState(buildID int64) *cloneState {
+	w.cloneMu.Lock()
+	defer w.cloneMu.Unlock()
+	cs, ok := w.cloneOnce[buildID]
+	if !ok {
+		cs = &cloneState{}
+		w.cloneOnce[buildID] = cs
+	}
+	return cs
+}
+
+// cleanupCloneOnce removes the sync.Once for a completed build to prevent leaks.
+func (w *Worker) cleanupCloneOnce(buildID int64) {
+	w.cloneMu.Lock()
+	defer w.cloneMu.Unlock()
+	delete(w.cloneOnce, buildID)
 }
 
 func (w *Worker) generateID() (string, error) {

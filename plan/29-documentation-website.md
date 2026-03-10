@@ -29,6 +29,7 @@ docs/
 │   │   ├── workflow-syntax.md
 │   │   ├── secrets.md
 │   │   ├── caching.md
+│   │   ├── notifications.md
 │   │   ├── manual-approvals.md
 │   │   └── distributed-workers.md
 │   ├── reference/

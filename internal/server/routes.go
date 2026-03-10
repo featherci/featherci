@@ -116,6 +116,28 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.Handle("POST /projects/{namespace}/{name}/secrets/{secretName}/delete",
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.secretHandler.Delete)))
 
+	// Notifications
+	mux.Handle("GET /projects/{namespace}/{name}/notifications",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.List)))
+	mux.Handle("GET /projects/{namespace}/{name}/notifications/new",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.New)))
+	mux.Handle("POST /projects/{namespace}/{name}/notifications",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.Create)))
+	mux.Handle("GET /projects/{namespace}/{name}/notifications/{id}/edit",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.Edit)))
+	mux.Handle("POST /projects/{namespace}/{name}/notifications/{id}",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.Update)))
+	mux.Handle("POST /projects/{namespace}/{name}/notifications/{id}/delete",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.Delete)))
+	mux.Handle("POST /projects/{namespace}/{name}/notifications/{id}/test",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.Test)))
+
+	// Notification preview (dev mode only)
+	mux.Handle("GET /notifications/preview",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.PreviewList)))
+	mux.Handle("GET /notifications/preview/{id}",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.notificationHandler.PreviewShow)))
+
 	// Admin
 	mux.Handle("GET /admin", s.authMiddleware.RequireAdmin(http.HandlerFunc(s.adminHandler.Dashboard)))
 	mux.Handle("POST /admin/users", s.authMiddleware.RequireAdmin(http.HandlerFunc(s.adminHandler.AddUser)))

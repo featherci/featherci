@@ -12,6 +12,7 @@ import (
 
 	"github.com/featherci/featherci/internal/graph"
 	"github.com/featherci/featherci/internal/models"
+	"github.com/featherci/featherci/internal/notify"
 	webtemplates "github.com/featherci/featherci/web/templates"
 )
 
@@ -161,6 +162,9 @@ func templateFuncs() template.FuncMap {
 		"edgePath": func(e graph.Edge) template.HTML {
 			return template.HTML(graph.EdgePath(e)) //nolint:gosec // trusted internal content
 		},
+
+		// Notification helpers
+		"channelTypeLabel": notify.ChannelTypeLabel,
 
 		// Iteration helpers
 		"seq": func(n int) []int {

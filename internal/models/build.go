@@ -21,6 +21,8 @@ const (
 	BuildStatusSuccess BuildStatus = "success"
 	// BuildStatusFailure indicates the build failed.
 	BuildStatusFailure BuildStatus = "failure"
+	// BuildStatusWaitingApproval indicates the build is waiting for manual approval on one or more steps.
+	BuildStatusWaitingApproval BuildStatus = "waiting_approval"
 	// BuildStatusCancelled indicates the build was cancelled.
 	BuildStatusCancelled BuildStatus = "cancelled"
 )
@@ -75,13 +77,16 @@ func (b *Build) CalculateStatus() BuildStatus {
 	hasRunning := false
 	hasPending := false
 	hasFailure := false
+	hasWaitingApproval := false
 
 	for _, step := range b.Steps {
 		switch step.Status {
 		case StepStatusRunning:
 			hasRunning = true
-		case StepStatusPending, StepStatusWaiting, StepStatusReady, StepStatusWaitingApproval:
+		case StepStatusPending, StepStatusWaiting, StepStatusReady:
 			hasPending = true
+		case StepStatusWaitingApproval:
+			hasWaitingApproval = true
 		case StepStatusFailure, StepStatusCancelled:
 			hasFailure = true
 		}
@@ -90,13 +95,17 @@ func (b *Build) CalculateStatus() BuildStatus {
 	if hasRunning {
 		return BuildStatusRunning
 	}
-	if hasFailure && !hasPending {
+	if hasFailure && !hasPending && !hasWaitingApproval {
 		return BuildStatusFailure
 	}
-	if hasPending {
+	if hasPending || hasWaitingApproval {
 		if hasFailure {
 			// Some steps failed but others are still pending - keep running
 			return BuildStatusRunning
+		}
+		if hasWaitingApproval {
+			// Approval steps are blocking; downstream steps may be waiting too
+			return BuildStatusWaitingApproval
 		}
 		return BuildStatusPending
 	}
@@ -351,7 +360,7 @@ func (r *SQLiteBuildRepository) Count(ctx context.Context) (int, error) {
 // CancelBuild cancels a build if it is still in a non-terminal state.
 func (r *SQLiteBuildRepository) CancelBuild(ctx context.Context, id int64) error {
 	now := time.Now()
-	query := `UPDATE builds SET status = 'cancelled', finished_at = ? WHERE id = ? AND status IN ('pending', 'running')`
+	query := `UPDATE builds SET status = 'cancelled', finished_at = ? WHERE id = ? AND status IN ('pending', 'running', 'waiting_approval')`
 	result, err := r.db.ExecContext(ctx, query, now, id)
 	if err != nil {
 		return err

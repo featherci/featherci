@@ -38,6 +38,7 @@ type ProjectHandler struct {
 	users          models.UserRepository
 	builds         models.BuildRepository
 	secrets        models.SecretRepository
+	notifications  models.NotificationChannelRepository
 	providers      *auth.Registry
 	templates      *templates.Engine
 	logger         *slog.Logger
@@ -56,6 +57,7 @@ func NewProjectHandler(
 	users models.UserRepository,
 	builds models.BuildRepository,
 	secrets models.SecretRepository,
+	notifications models.NotificationChannelRepository,
 	providers *auth.Registry,
 	templates *templates.Engine,
 	logger *slog.Logger,
@@ -72,6 +74,7 @@ func NewProjectHandler(
 		users:          users,
 		builds:         builds,
 		secrets:        secrets,
+		notifications:  notifications,
 		providers:      providers,
 		templates:      templates,
 		logger:         logger,
@@ -126,13 +129,14 @@ type ProjectShowPageData struct {
 
 // ProjectSettingsPageData holds data for the project settings page.
 type ProjectSettingsPageData struct {
-	User        *models.User
-	Project     *models.Project
-	WebhookURL  string
-	DevMode     bool
-	Error       string
-	SecretCount int
-	Success    string
+	User              *models.User
+	Project           *models.Project
+	WebhookURL        string
+	DevMode           bool
+	Error             string
+	SecretCount       int
+	NotificationCount int
+	Success           string
 }
 
 // List shows all projects the user has access to.
@@ -478,12 +482,16 @@ func (h *ProjectHandler) Settings(w http.ResponseWriter, r *http.Request) {
 		secretCount = len(secrets)
 	}
 
+	// Count notification channels for display
+	notificationCount, _ := h.notifications.CountByProject(ctx, project.ID)
+
 	data := ProjectSettingsPageData{
-		User:        user,
-		Project:     project,
-		WebhookURL:  webhookURL,
-		DevMode:     false,
-		SecretCount: secretCount,
+		User:              user,
+		Project:           project,
+		WebhookURL:        webhookURL,
+		DevMode:           false,
+		SecretCount:       secretCount,
+		NotificationCount: notificationCount,
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

@@ -1,0 +1,135 @@
+{{template "base" .}}
+
+{{define "title"}}Notifications - {{.Project.FullName}} - FeatherCI{{end}}
+
+{{define "content"}}
+<div class="space-y-6">
+    <!-- Header -->
+    <div>
+        <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-4">
+            <a href="/projects" class="hover:text-gray-700">Projects</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}" class="hover:text-gray-700">{{.Project.Name}}</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}/settings" class="hover:text-gray-700">Settings</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="text-gray-900">Notifications</span>
+        </nav>
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900">Notifications</h1>
+                <p class="mt-1 text-sm text-gray-500">
+                    Get notified when builds succeed or fail for {{.Project.FullName}}.
+                </p>
+            </div>
+            <div class="flex items-center gap-3">
+                {{if .DevMode}}
+                <a href="/notifications/preview" class="btn bg-purple-600 text-white hover:bg-purple-700">
+                    Preview Inbox
+                </a>
+                {{end}}
+                <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}/notifications/new" class="btn btn-primary">
+                    Add Channel
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{if .Success}}
+    <div class="rounded-md bg-green-50 p-4">
+        <div class="flex">
+            <div class="shrink-0">
+                <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium text-green-800">{{.Success}}</p>
+            </div>
+        </div>
+    </div>
+    {{end}}
+
+    {{if .Error}}
+    <div class="rounded-md bg-red-50 p-4">
+        <div class="flex">
+            <div class="shrink-0">
+                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium text-red-800">{{.Error}}</p>
+            </div>
+        </div>
+    </div>
+    {{end}}
+
+    <!-- Channels Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="text-lg font-medium text-gray-900">Notification Channels</h2>
+        </div>
+        {{if .Channels}}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Triggers</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {{range .Channels}}
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{.Name}}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{channelTypeLabel .Type}}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{if .OnSuccess}}<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mr-1">Success</span>{{end}}
+                            {{if .OnFailure}}<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Failure</span>{{end}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            {{if .Enabled}}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">Enabled</span>
+                            {{else}}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">Disabled</span>
+                            {{end}}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
+                            <form method="POST"
+                                  action="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/notifications/{{.ID}}/test"
+                                  class="inline">
+                                <button type="submit" class="text-feather-600 hover:text-feather-900">Test</button>
+                            </form>
+                            <a href="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/notifications/{{.ID}}/edit"
+                               class="text-feather-600 hover:text-feather-900">Edit</a>
+                            <form method="POST"
+                                  action="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/notifications/{{.ID}}/delete"
+                                  onsubmit="return confirm('Delete notification channel {{.Name}}?');"
+                                  class="inline">
+                                <button type="submit" class="text-red-600 hover:text-red-900">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+        {{else}}
+        <div class="card-body text-center text-gray-500 py-8">
+            No notification channels configured yet.
+            <a href="/projects/{{.Project.Namespace}}/{{.Project.Name}}/notifications/new" class="text-feather-600 hover:text-feather-800">Add one</a>.
+        </div>
+        {{end}}
+    </div>
+</div>
+{{end}}

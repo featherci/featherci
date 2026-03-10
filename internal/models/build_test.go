@@ -430,6 +430,31 @@ func TestBuild_CalculateStatus(t *testing.T) {
 			},
 			expected: BuildStatusRunning,
 		},
+		{
+			name: "only waiting approval steps remain",
+			steps: []*BuildStep{
+				{Status: StepStatusSuccess},
+				{Status: StepStatusWaitingApproval},
+			},
+			expected: BuildStatusWaitingApproval,
+		},
+		{
+			name: "waiting approval with downstream waiting steps",
+			steps: []*BuildStep{
+				{Status: StepStatusSuccess},
+				{Status: StepStatusWaitingApproval},
+				{Status: StepStatusWaiting},
+			},
+			expected: BuildStatusWaitingApproval,
+		},
+		{
+			name: "failure with waiting approval - still running",
+			steps: []*BuildStep{
+				{Status: StepStatusFailure},
+				{Status: StepStatusWaitingApproval},
+			},
+			expected: BuildStatusRunning,
+		},
 	}
 
 	for _, tt := range tests {
@@ -475,6 +500,7 @@ func TestBuild_IsTerminal(t *testing.T) {
 	}{
 		{BuildStatusPending, false},
 		{BuildStatusRunning, false},
+		{BuildStatusWaitingApproval, false},
 		{BuildStatusSuccess, true},
 		{BuildStatusFailure, true},
 		{BuildStatusCancelled, true},

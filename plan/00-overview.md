@@ -113,25 +113,25 @@ Use this checklist to track completion. Each step can be done in a fresh session
 - [x] **09 - Project Management** (Opus) - Project CRUD, repo listing
 - [x] **10 - Webhooks** (Sonnet) - Webhook handlers
 - [x] **11 - Workflow Parsing** (Opus) - YAML parsing, validation
-- [ ] **12 - Build Model** (Opus) - Build/step data models
-- [ ] **13 - Git Operations** (Sonnet) - Clone, checkout
-- [ ] **14 - Docker Executor** (Opus) - Container execution
-- [ ] **15 - Worker Architecture** (Opus) - Master/worker system
-- [ ] **16 - Build Orchestration** (Opus) - Step scheduling
-- [ ] **17 - Build Status UI** (Opus) - Build list/detail pages
-- [ ] **18 - Log Streaming** (Sonnet) - SSE log streaming
-- [ ] **19 - Pipeline Graph** (Opus) - SVG DAG visualization
-- [ ] **20 - Secrets** (Sonnet) - Encrypted secrets
-- [ ] **21 - Caching** (Sonnet) - Build cache
-- [ ] **22 - Manual Approval** (Sonnet) - Approval gates
-- [ ] **23 - Commit Status** (Sonnet) - Status posting to platforms
-- [ ] **24 - Docker Build** (Sonnet) - Dockerfile, compose
-- [ ] **25 - Packaging** (Sonnet) - systemd, Homebrew
-- [ ] **26 - Integration Testing** (Opus) - Test app setup, end-to-end testing
+- [x] **12 - Build Model** (Opus) - Build/step data models
+- [x] **13 - Git Operations** (Sonnet) - Clone, checkout
+- [x] **14 - Docker Executor** (Opus) - Container execution
+- [x] **15 - Worker Architecture** (Opus) - Master/worker system
+- [x] **16 - Build Orchestration** (Opus) - Step scheduling
+- [x] **17 - Build Status UI** (Opus) - Build list/detail pages
+- [x] **18 - Log Streaming** (Sonnet) - SSE log streaming
+- [x] **19 - Pipeline Graph** (Opus) - SVG DAG visualization
+- [x] **20 - Secrets** (Sonnet) - Encrypted secrets
+- [x] **21 - Caching** (Sonnet) - Build cache
+- [x] **22 - Manual Approval** (Sonnet) - Approval gates
+- [x] **23 - Commit Status** (Sonnet) - Status posting to platforms
+- [x] **24 - Docker Build** (Sonnet) - Dockerfile, compose
+- [x] **25 - Packaging** (Sonnet) - systemd, Homebrew
+- [x] **26 - Integration Testing** (Opus) - Test app setup, end-to-end testing
 - [ ] **27 - Notifications** (Opus) - Email, Slack, Discord, Pushover
-- [ ] **28 - Testing & Polish** (Opus) - Tests, final checks
-- [ ] **29 - README** (Sonnet) - Repository docs
-- [ ] **30 - Documentation Site** (Opus) - GitHub Pages site
+- [ ] **28 - README** (Sonnet) - Repository docs
+- [ ] **29 - Documentation Site** (Opus) - GitHub Pages site
+- [ ] **30 - Testing & Polish** (Opus) - Tests, final checks
 
 ## Model Assignments
 

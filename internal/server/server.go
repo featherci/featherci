@@ -42,9 +42,10 @@ type Server struct {
 	projectHandler *handlers.ProjectHandler
 	webhookHandler *handlers.WebhookHandler
 	buildHandler   *handlers.BuildHandler
-	secretHandler  *handlers.SecretHandler
-	adminHandler   *handlers.AdminHandler
-	authMiddleware *middleware.AuthMiddleware
+	secretHandler       *handlers.SecretHandler
+	notificationHandler *handlers.NotificationHandler
+	adminHandler        *handlers.AdminHandler
+	authMiddleware      *middleware.AuthMiddleware
 }
 
 // New creates a new Server instance.
@@ -94,12 +95,17 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	// Initialize webhook manager
 	webhookManager := webhooks.NewManager(cfg, logger)
 
+	// Initialize notification channels
+	notificationChannels := models.NewNotificationChannelRepository(db.DB)
+	notificationService := services.NewNotificationService(notificationChannels, encryptor, cfg.BaseURL, cfg.DevMode, logger)
+
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(providers, users, sessions, cfg)
-	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, builds, secrets, providers, tmpl, logger, webhookManager, fileFetcher, tokenSource, buildCreator, parser, statusService)
+	projectHandler := handlers.NewProjectHandler(projects, projectUsers, users, builds, secrets, notificationChannels, providers, tmpl, logger, webhookManager, fileFetcher, tokenSource, buildCreator, parser, statusService)
 	webhookHandler := handlers.NewWebhookHandler(projects, logger, buildCreator, fileFetcher, tokenSource, parser, statusService)
-	buildHandler := handlers.NewBuildHandler(projects, builds, steps, projectUsers, tmpl, logger)
+	buildHandler := handlers.NewBuildHandler(projects, builds, steps, projectUsers, notificationService, tmpl, logger)
 	secretHandler := handlers.NewSecretHandler(secretService, projects, projectUsers, tmpl, logger)
+	notificationHandler := handlers.NewNotificationHandler(notificationService, projects, projectUsers, tmpl, logger, cfg.DevMode)
 	adminHandler := handlers.NewAdminHandler(users, projects, builds, workers, tmpl, logger)
 
 	return &Server{
@@ -117,9 +123,10 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 		projectHandler: projectHandler,
 		webhookHandler: webhookHandler,
 		buildHandler:   buildHandler,
-		secretHandler:  secretHandler,
-		adminHandler:   adminHandler,
-		authMiddleware: authMiddleware,
+		secretHandler:       secretHandler,
+		notificationHandler: notificationHandler,
+		adminHandler:        adminHandler,
+		authMiddleware:      authMiddleware,
 	}, nil
 }
 

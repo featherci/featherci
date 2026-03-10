@@ -56,6 +56,9 @@ type Config struct {
 
 	// Cache
 	CachePath string // Directory for build cache
+
+	// Workspaces
+	WorkspacePath string // Directory for build workspaces
 }
 
 // Load reads configuration from .env file (if present) and environment variables.
@@ -96,6 +99,9 @@ func Load() (*Config, error) {
 
 		// Cache
 		CachePath: getEnv("FEATHERCI_CACHE_PATH", "./cache"),
+
+		// Workspaces
+		WorkspacePath: getEnv("FEATHERCI_WORKSPACE_PATH", "./workspaces"),
 	}
 
 	// Decode base64 secret key

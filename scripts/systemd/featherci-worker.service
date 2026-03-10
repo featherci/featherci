@@ -1,0 +1,30 @@
+[Unit]
+Description=FeatherCI Worker
+Documentation=https://github.com/featherci/featherci
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=featherci
+Group=featherci
+ExecStart=/usr/local/bin/featherci --mode=worker
+Restart=always
+RestartSec=5
+
+EnvironmentFile=-/etc/featherci/featherci-worker.env
+
+WorkingDirectory=/var/lib/featherci-worker
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=featherci-worker
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/featherci-worker
+
+[Install]
+WantedBy=multi-user.target

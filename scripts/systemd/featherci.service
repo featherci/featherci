@@ -1,0 +1,38 @@
+[Unit]
+Description=FeatherCI - Lightweight CI/CD System
+Documentation=https://github.com/featherci/featherci
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=featherci
+Group=featherci
+ExecStart=/usr/local/bin/featherci
+Restart=always
+RestartSec=5
+
+# Environment file for configuration
+EnvironmentFile=-/etc/featherci/featherci.env
+
+# Working directory
+WorkingDirectory=/var/lib/featherci
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=featherci
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/featherci /var/log/featherci
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

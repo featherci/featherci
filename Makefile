@@ -43,7 +43,7 @@ endif
 # HTMX version
 HTMX_VERSION := 1.9.10
 
-.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets docker-build docker-run docker-stop docker-logs
+.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets docker-build docker-run docker-stop docker-logs release install
 
 all: build
 
@@ -152,6 +152,21 @@ docker-stop:
 ## docker-logs: Tail FeatherCI container logs
 docker-logs:
 	docker compose logs -f
+
+## release: Cross-compile release binaries for all platforms
+release: assets
+	@echo "Building release binaries..."
+	@mkdir -p dist
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-linux-amd64 $(CMD_DIR)
+	GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-linux-arm64 $(CMD_DIR)
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-darwin-amd64 $(CMD_DIR)
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-darwin-arm64 $(CMD_DIR)
+	@cd dist && for f in featherci-*; do tar -czf "$$f.tar.gz" "$$f"; done
+	@echo "Release binaries in dist/"
+
+## install: Install binary to /usr/local/bin
+install: build
+	sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
 
 ## help: Show this help message
 help:

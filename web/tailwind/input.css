@@ -1,96 +1,136 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
+@source "../../web/templates/**/*.html";
+@source "../../internal/server/routes.go";
+
+@theme {
+  --color-feather-50: #f0f9ff;
+  --color-feather-100: #e0f2fe;
+  --color-feather-200: #bae6fd;
+  --color-feather-300: #7dd3fc;
+  --color-feather-400: #38bdf8;
+  --color-feather-500: #0ea5e9;
+  --color-feather-600: #0284c7;
+  --color-feather-700: #0369a1;
+  --color-feather-800: #075985;
+  --color-feather-900: #0c4a6e;
+  --color-feather-950: #082f49;
+}
+
+/* Buttons */
+@utility btn {
+  @apply px-4 py-2 rounded-sm font-medium transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center;
+}
+@utility btn-primary {
+  @apply bg-feather-600 text-white hover:bg-feather-700 focus:ring-feather-500;
+}
+@utility btn-secondary {
+  @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
+}
+@utility btn-danger {
+  @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+}
+@utility btn-sm {
+  @apply px-3 py-1.5 text-sm;
+}
+@utility btn-lg {
+  @apply px-6 py-3 text-lg;
+}
+
+/* Provider-specific login buttons */
+@utility btn-github {
+  @apply bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-700;
+}
+@utility btn-gitlab {
+  @apply bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-400;
+}
+@utility btn-gitea {
+  @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
+}
+@utility btn-dev {
+  @apply bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-400;
+}
+
+/* Form inputs */
+@utility input {
+  @apply block w-full rounded-sm border-gray-300 shadow-xs focus:border-feather-500 focus:ring-feather-500 sm:text-sm;
+}
+@utility input-error {
+  @apply border-red-300 focus:border-red-500 focus:ring-red-500;
+}
+
+/* Cards */
+@utility card {
+  @apply bg-white shadow-sm rounded-lg;
+}
+@utility card-header {
+  @apply px-4 py-5 border-b border-gray-200 sm:px-6;
+}
+@utility card-body {
+  @apply px-4 py-5 sm:p-6;
+}
+@utility card-footer {
+  @apply px-4 py-4 border-t border-gray-200 sm:px-6;
+}
+
+/* Badges for build status */
+@utility badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+@utility badge-success {
+  @apply bg-green-100 text-green-800;
+}
+@utility badge-failure {
+  @apply bg-red-100 text-red-800;
+}
+@utility badge-pending {
+  @apply bg-yellow-100 text-yellow-800;
+}
+@utility badge-running {
+  @apply bg-blue-100 text-blue-800;
+}
+@utility badge-cancelled {
+  @apply bg-gray-100 text-gray-800;
+}
+@utility badge-waiting {
+  @apply bg-purple-100 text-purple-800;
+}
+
+/* Navigation */
+@utility nav-link {
+  @apply text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium rounded-sm hover:bg-gray-100 transition-colors;
+}
+@utility nav-link-active {
+  @apply text-feather-700 bg-feather-50;
+}
+
+/* Alerts */
+@utility alert {
+  @apply p-4 rounded-sm;
+}
+@utility alert-info {
+  @apply bg-blue-50 text-blue-800;
+}
+@utility alert-success {
+  @apply bg-green-50 text-green-800;
+}
+@utility alert-warning {
+  @apply bg-yellow-50 text-yellow-800;
+}
+@utility alert-error {
+  @apply bg-red-50 text-red-800;
+}
+
+/* Code blocks */
+@utility code {
+  @apply font-mono text-sm bg-gray-100 rounded-xs px-1.5 py-0.5;
+}
+@utility code-block {
+  @apply font-mono text-sm bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
+}
+
+/* Tables - use regular CSS since these target element selectors */
 @layer components {
-  /* Buttons */
-  .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center;
-  }
-  .btn-primary {
-    @apply bg-feather-600 text-white hover:bg-feather-700 focus:ring-feather-500;
-  }
-  .btn-secondary {
-    @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
-  }
-  .btn-danger {
-    @apply bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
-  }
-  .btn-sm {
-    @apply px-3 py-1.5 text-sm;
-  }
-  .btn-lg {
-    @apply px-6 py-3 text-lg;
-  }
-
-  /* Provider-specific login buttons */
-  .btn-github {
-    @apply bg-gray-900 text-white hover:bg-gray-800 focus:ring-gray-700;
-  }
-  .btn-gitlab {
-    @apply bg-orange-500 text-white hover:bg-orange-600 focus:ring-orange-400;
-  }
-  .btn-gitea {
-    @apply bg-green-600 text-white hover:bg-green-700 focus:ring-green-500;
-  }
-  .btn-dev {
-    @apply bg-gray-500 text-white hover:bg-gray-600 focus:ring-gray-400;
-  }
-
-  /* Form inputs */
-  .input {
-    @apply block w-full rounded-md border-gray-300 shadow-sm focus:border-feather-500 focus:ring-feather-500 sm:text-sm;
-  }
-  .input-error {
-    @apply border-red-300 focus:border-red-500 focus:ring-red-500;
-  }
-
-  /* Cards */
-  .card {
-    @apply bg-white shadow rounded-lg;
-  }
-  .card-header {
-    @apply px-4 py-5 border-b border-gray-200 sm:px-6;
-  }
-  .card-body {
-    @apply px-4 py-5 sm:p-6;
-  }
-  .card-footer {
-    @apply px-4 py-4 border-t border-gray-200 sm:px-6;
-  }
-
-  /* Badges for build status */
-  .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-  }
-  .badge-success {
-    @apply bg-green-100 text-green-800;
-  }
-  .badge-failure {
-    @apply bg-red-100 text-red-800;
-  }
-  .badge-pending {
-    @apply bg-yellow-100 text-yellow-800;
-  }
-  .badge-running {
-    @apply bg-blue-100 text-blue-800;
-  }
-  .badge-cancelled {
-    @apply bg-gray-100 text-gray-800;
-  }
-  .badge-waiting {
-    @apply bg-purple-100 text-purple-800;
-  }
-
-  /* Navigation */
-  .nav-link {
-    @apply text-gray-600 hover:text-gray-900 px-3 py-2 text-sm font-medium rounded-md hover:bg-gray-100 transition-colors;
-  }
-  .nav-link-active {
-    @apply text-feather-700 bg-feather-50;
-  }
-
-  /* Tables */
   .table {
     @apply min-w-full divide-y divide-gray-200;
   }
@@ -102,30 +142,5 @@
   }
   .table tbody tr {
     @apply hover:bg-gray-50 transition-colors;
-  }
-
-  /* Alerts */
-  .alert {
-    @apply p-4 rounded-md;
-  }
-  .alert-info {
-    @apply bg-blue-50 text-blue-800;
-  }
-  .alert-success {
-    @apply bg-green-50 text-green-800;
-  }
-  .alert-warning {
-    @apply bg-yellow-50 text-yellow-800;
-  }
-  .alert-error {
-    @apply bg-red-50 text-red-800;
-  }
-
-  /* Code blocks */
-  .code {
-    @apply font-mono text-sm bg-gray-100 rounded px-1.5 py-0.5;
-  }
-  .code-block {
-    @apply font-mono text-sm bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
   }
 }

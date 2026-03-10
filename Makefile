@@ -22,7 +22,7 @@ BUILD_DIR := ./bin
 CMD_DIR := ./cmd/featherci
 
 # Tailwind CSS standalone CLI
-TAILWIND_VERSION := 3.4.1
+TAILWIND_VERSION := 4.2.1
 TAILWIND_CLI := $(BUILD_DIR)/tailwindcss
 
 # Detect OS/Arch for Tailwind download
@@ -60,7 +60,7 @@ dev: assets
 
 ## dev-watch: Run with CSS watch mode (run in separate terminal)
 dev-watch: tailwind-download
-	$(TAILWIND_CLI) -c web/tailwind/tailwind.config.js -i web/tailwind/input.css -o web/static/css/main.css --watch
+	$(TAILWIND_CLI) -i web/tailwind/input.css -o web/static/css/main.css --watch
 
 ## assets: Build all frontend assets (CSS and JS)
 assets: css htmx-download
@@ -79,12 +79,12 @@ tailwind-download:
 ## css: Compile Tailwind CSS
 css: tailwind-download
 	@echo "Compiling Tailwind CSS..."
-	@$(TAILWIND_CLI) -c web/tailwind/tailwind.config.js -i web/tailwind/input.css -o web/static/css/main.css --minify
+	@$(TAILWIND_CLI) -i web/tailwind/input.css -o web/static/css/main.css --minify
 	@echo "CSS compiled to web/static/css/main.css"
 
 ## css-watch: Watch and recompile CSS on changes
 css-watch: tailwind-download
-	$(TAILWIND_CLI) -c web/tailwind/tailwind.config.js -i web/tailwind/input.css -o web/static/css/main.css --watch
+	$(TAILWIND_CLI) -i web/tailwind/input.css -o web/static/css/main.css --watch
 
 ## htmx-download: Download HTMX library
 htmx-download:

@@ -1,7 +1,9 @@
 package executor
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
 	"io"
 	"strings"
@@ -21,6 +23,7 @@ type mockDockerClient struct {
 	containerCreateFn func(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error)
 	containerStartFn  func(ctx context.Context, containerID string, options container.StartOptions) error
 	containerWaitFn   func(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)
+	containerLogsFn   func(ctx context.Context, containerID string, options container.LogsOptions) (io.ReadCloser, error)
 	containerStopFn   func(ctx context.Context, containerID string, options container.StopOptions) error
 	containerRemoveFn func(ctx context.Context, containerID string, options container.RemoveOptions) error
 }
@@ -61,6 +64,13 @@ func (m *mockDockerClient) ContainerWait(ctx context.Context, containerID string
 	waitCh <- container.WaitResponse{StatusCode: 0}
 	errCh := make(chan error, 1)
 	return waitCh, errCh
+}
+
+func (m *mockDockerClient) ContainerLogs(ctx context.Context, containerID string, options container.LogsOptions) (io.ReadCloser, error) {
+	if m.containerLogsFn != nil {
+		return m.containerLogsFn(ctx, containerID, options)
+	}
+	return io.NopCloser(strings.NewReader("")), nil
 }
 
 func (m *mockDockerClient) ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error {
@@ -345,6 +355,46 @@ func TestFormatBindMounts(t *testing.T) {
 	}
 	if got[1] != "/host/cache:/cache:ro" {
 		t.Errorf("got %s", got[1])
+	}
+}
+
+func TestDockerExecutor_Run_OutputCapture(t *testing.T) {
+	var buf bytes.Buffer
+	mock := &mockDockerClient{
+		containerLogsFn: func(ctx context.Context, containerID string, options container.LogsOptions) (io.ReadCloser, error) {
+			if !options.ShowStdout || !options.ShowStderr || !options.Follow {
+				t.Error("expected ShowStdout, ShowStderr, and Follow to be true")
+			}
+			// Docker multiplexed format: 8 byte header per frame
+			// header[0] = stream type (1=stdout, 2=stderr)
+			// header[4:8] = uint32 big-endian payload size
+			var data bytes.Buffer
+			payload := []byte("hello from container\n")
+			header := make([]byte, 8)
+			header[0] = 1 // stdout
+			binary.BigEndian.PutUint32(header[4:], uint32(len(payload)))
+			data.Write(header)
+			data.Write(payload)
+			return io.NopCloser(&data), nil
+		},
+	}
+	exec := &DockerExecutor{client: mock}
+
+	result, err := exec.Run(context.Background(), RunOptions{
+		Image:    "alpine",
+		Commands: []string{"echo hello"},
+		Output:   &buf,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ExitCode != 0 {
+		t.Errorf("expected exit code 0, got %d", result.ExitCode)
+	}
+	// Give goroutine time to finish
+	time.Sleep(50 * time.Millisecond)
+	if !strings.Contains(buf.String(), "hello from container") {
+		t.Errorf("expected output to contain 'hello from container', got: %q", buf.String())
 	}
 }
 

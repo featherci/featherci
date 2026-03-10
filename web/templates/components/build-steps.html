@@ -8,22 +8,36 @@
     {{if .Build.Steps}}
     <div class="divide-y divide-gray-200">
         {{range .Build.Steps}}
-        <div class="px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                {{template "status-dot" (printf "%s" .Status)}}
-                <div>
-                    <p class="text-sm font-medium text-gray-900">{{.Name}}</p>
-                    {{if .Image}}<p class="text-xs text-gray-500">{{deref .Image}}</p>{{end}}
+        <details class="group" {{if eq (printf "%s" .Status) "running"}}open{{end}}>
+            <summary class="px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 list-none">
+                <div class="flex items-center space-x-3">
+                    <svg class="w-4 h-4 text-gray-400 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    {{template "status-dot" (printf "%s" .Status)}}
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">{{.Name}}</p>
+                        {{if .Image}}<p class="text-xs text-gray-500">{{deref .Image}}</p>{{end}}
+                    </div>
+                </div>
+                <div class="text-sm text-gray-500">
+                    {{if .StartedAt}}
+                    {{duration .Duration}}
+                    {{else}}
+                    —
+                    {{end}}
+                </div>
+            </summary>
+            <div class="px-6 pb-4">
+                <div class="step-log bg-gray-900 rounded-lg p-4 max-h-96 overflow-y-auto font-mono text-xs text-gray-200 leading-relaxed"
+                     data-step-id="{{.ID}}"
+                     data-log-url="/projects/{{$.Project.Namespace}}/{{$.Project.Name}}/builds/{{$.Build.BuildNumber}}/steps/{{.ID}}/log"
+                     data-step-done="{{.IsTerminal}}"
+                     data-offset="0">
+                    <p class="text-gray-500">Loading logs...</p>
                 </div>
             </div>
-            <div class="text-sm text-gray-500">
-                {{if .StartedAt}}
-                {{duration .Duration}}
-                {{else}}
-                —
-                {{end}}
-            </div>
-        </div>
+        </details>
         {{end}}
     </div>
     {{else}}

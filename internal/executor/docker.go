@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -22,6 +23,7 @@ type dockerClient interface {
 	ContainerCreate(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, networkingConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error)
 	ContainerStart(ctx context.Context, containerID string, options container.StartOptions) error
 	ContainerWait(ctx context.Context, containerID string, condition container.WaitCondition) (<-chan container.WaitResponse, <-chan error)
+	ContainerLogs(ctx context.Context, containerID string, options container.LogsOptions) (io.ReadCloser, error)
 	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
 	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
 }
@@ -84,6 +86,22 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 	startedAt := time.Now()
 	if err := d.client.ContainerStart(ctx, containerID, container.StartOptions{}); err != nil {
 		return nil, fmt.Errorf("starting container: %w", err)
+	}
+
+	// Stream container output to the provided writer.
+	if opts.Output != nil {
+		logReader, err := d.client.ContainerLogs(ctx, containerID, container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+		})
+		if err == nil {
+			go func() {
+				defer logReader.Close()
+				// StdCopy demuxes Docker's multiplexed stdout/stderr stream.
+				_, _ = stdcopy.StdCopy(opts.Output, opts.Output, logReader)
+			}()
+		}
 	}
 
 	// Apply timeout if specified.

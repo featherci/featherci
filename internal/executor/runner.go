@@ -53,6 +53,12 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 	// Build timeout from step config.
 	timeout := time.Duration(step.GetTimeout()) * time.Minute
 
+	// Create log writer for capturing container output.
+	logWriter, err := NewLogWriter(logPath)
+	if err != nil {
+		return failedResult(fmt.Sprintf("creating log writer: %v", err))
+	}
+
 	opts := RunOptions{
 		Image:    image,
 		Commands: step.Commands,
@@ -62,12 +68,20 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 			{Source: workspacePath, Target: "/workspace"},
 		},
 		Timeout: timeout,
+		Output:  logWriter,
 	}
 
-	result, err := r.executor.Run(ctx, opts)
-	if err != nil {
-		// Write error to log file for visibility.
-		_ = os.WriteFile(logPath, []byte(fmt.Sprintf("executor error: %s\n", err)), 0644)
+	result, runErr := r.executor.Run(ctx, opts)
+	// Always flush and close the log writer.
+	logWriter.Close()
+
+	if runErr != nil {
+		// Append error to log file for visibility.
+		f, ferr := os.OpenFile(logPath, os.O_APPEND|os.O_WRONLY, 0644)
+		if ferr == nil {
+			fmt.Fprintf(f, "executor error: %s\n", runErr)
+			f.Close()
+		}
 		return &StepResult{
 			Status:  models.StepStatusFailure,
 			LogPath: logPath,

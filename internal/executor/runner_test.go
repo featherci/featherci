@@ -230,6 +230,47 @@ func TestStepRunner_RunStep_LogPath(t *testing.T) {
 	}
 }
 
+func TestStepRunner_RunStep_OutputCapture(t *testing.T) {
+	exec := &mockExecutor{
+		runFn: func(ctx context.Context, opts RunOptions) (*RunResult, error) {
+			// Simulate container writing output to the provided writer.
+			if opts.Output != nil {
+				opts.Output.Write([]byte("step output line 1\nstep output line 2\n"))
+			}
+			return &RunResult{ExitCode: 0, StartedAt: time.Now(), FinishedAt: time.Now()}, nil
+		},
+	}
+	runner := NewStepRunner(exec)
+
+	dir := t.TempDir()
+	workspace := filepath.Join(dir, "workspace")
+	os.MkdirAll(workspace, 0755)
+
+	step := &models.BuildStep{
+		ID:       50,
+		Image:    strPtr("alpine"),
+		Commands: []string{"echo hello"},
+	}
+
+	result := runner.RunStep(context.Background(), step, workspace)
+
+	if result.Status != models.StepStatusSuccess {
+		t.Errorf("expected success, got %s", result.Status)
+	}
+
+	// Verify log file has the captured output.
+	content, err := os.ReadFile(result.LogPath)
+	if err != nil {
+		t.Fatalf("reading log: %v", err)
+	}
+	if !strings.Contains(string(content), "step output line 1") {
+		t.Errorf("expected log to contain output, got: %s", string(content))
+	}
+	if !strings.Contains(string(content), "step output line 2") {
+		t.Errorf("expected log to contain second line, got: %s", string(content))
+	}
+}
+
 func TestStepRunner_RunStep_DefaultTimeout(t *testing.T) {
 	var capturedOpts RunOptions
 	exec := &mockExecutor{

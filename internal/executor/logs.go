@@ -72,6 +72,25 @@ func (lw *LogWriter) Close() error {
 	return lw.file.Close()
 }
 
+// CountLines counts the total number of lines in a log file.
+func CountLines(path string) (int, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return 0, fmt.Errorf("opening log file: %w", err)
+	}
+	defer f.Close()
+
+	count := 0
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		count++
+	}
+	if err := scanner.Err(); err != nil {
+		return 0, fmt.Errorf("scanning log file: %w", err)
+	}
+	return count, nil
+}
+
 // ReadLines reads a range of lines from the log file on disk.
 // offset is 0-based, limit is the max number of lines to return.
 // This opens the file independently, so it can be called while writing.

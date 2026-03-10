@@ -5,8 +5,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
 	"strconv"
 
+	"github.com/featherci/featherci/internal/executor"
 	"github.com/featherci/featherci/internal/middleware"
 	"github.com/featherci/featherci/internal/models"
 	"github.com/featherci/featherci/internal/templates"
@@ -336,4 +338,105 @@ func (h *BuildHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 		"build_id":     build.ID,
 		"build_number": build.BuildNumber,
 	})
+}
+
+const defaultLogLimit = 500
+
+// StepLogResponse is the JSON response for the step log endpoint.
+type StepLogResponse struct {
+	Lines  []string `json:"lines"`
+	Offset int      `json:"offset"`
+	Total  int      `json:"total"`
+	Done   bool     `json:"done"`
+}
+
+// StepLog returns log lines for a build step as JSON.
+// GET /projects/{namespace}/{name}/builds/{number}/steps/{stepID}/log
+func (h *BuildHandler) StepLog(w http.ResponseWriter, r *http.Request) {
+	project, err := h.lookupProject(r)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get project", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	ctx := r.Context()
+	buildNumber, err := strconv.Atoi(r.PathValue("number"))
+	if err != nil {
+		http.Error(w, "Bad Request: invalid build number", http.StatusBadRequest)
+		return
+	}
+
+	build, err := h.builds.GetByNumber(ctx, project.ID, buildNumber)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get build", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	stepID, err := strconv.ParseInt(r.PathValue("stepID"), 10, 64)
+	if err != nil {
+		http.Error(w, "Bad Request: invalid step ID", http.StatusBadRequest)
+		return
+	}
+
+	step, err := h.steps.GetByID(ctx, stepID)
+	if err != nil {
+		if errors.Is(err, models.ErrNotFound) {
+			http.Error(w, "Not Found", http.StatusNotFound)
+			return
+		}
+		h.logger.Error("failed to get step", "error", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify step belongs to this build.
+	if step.BuildID != build.ID {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	// Parse offset query param.
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if parsed, err := strconv.Atoi(o); err == nil && parsed >= 0 {
+			offset = parsed
+		}
+	}
+
+	resp := StepLogResponse{
+		Lines:  []string{},
+		Offset: offset,
+		Total:  0,
+		Done:   step.IsTerminal(),
+	}
+
+	// Read log lines if path exists.
+	if step.LogPath != nil && *step.LogPath != "" {
+		if _, err := os.Stat(*step.LogPath); err == nil {
+			total, err := executor.CountLines(*step.LogPath)
+			if err == nil {
+				resp.Total = total
+			}
+
+			if offset < total {
+				lines, err := executor.ReadLines(*step.LogPath, offset, defaultLogLimit)
+				if err == nil {
+					resp.Lines = lines
+				}
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(resp)
 }

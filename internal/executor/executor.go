@@ -22,6 +22,7 @@ package executor
 import (
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"time"
 )
@@ -42,6 +43,7 @@ type RunOptions struct {
 	Memory     int64   // bytes, 0 = unlimited
 	CPUs       float64 // 0 = unlimited
 	Timeout    time.Duration
+	Output     io.Writer // container stdout/stderr are streamed here during execution
 }
 
 // BindMount maps a host path into the container.

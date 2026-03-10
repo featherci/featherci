@@ -97,6 +97,8 @@ func (s *Server) setupRoutes() http.Handler {
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.StepsFragment)))
 	mux.Handle("POST /projects/{namespace}/{name}/builds/{number}/cancel",
 		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.Cancel)))
+	mux.Handle("GET /projects/{namespace}/{name}/builds/{number}/steps/{stepID}/log",
+		s.authMiddleware.RequireAuth(http.HandlerFunc(s.buildHandler.StepLog)))
 
 	// API routes for workers
 	mux.HandleFunc("GET /api/worker/jobs", s.handleNotImplemented)

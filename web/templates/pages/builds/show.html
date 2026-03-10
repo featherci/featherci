@@ -81,4 +81,93 @@
         {{template "build-steps" .}}
     </div>
 </div>
+
+<script>
+(function() {
+    var pollers = {};
+
+    function escapeHtml(text) {
+        var d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    function fetchLogs(el) {
+        var url = el.dataset.logUrl;
+        var offset = parseInt(el.dataset.offset, 10) || 0;
+
+        fetch(url + '?offset=' + offset)
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.lines && data.lines.length > 0) {
+                    // Clear placeholder on first load
+                    if (offset === 0) {
+                        el.innerHTML = '';
+                    }
+                    var fragment = document.createDocumentFragment();
+                    for (var i = 0; i < data.lines.length; i++) {
+                        var line = document.createElement('div');
+                        line.innerHTML = '<span class="text-gray-600 select-none mr-3">' + (offset + i + 1) + '</span>' + escapeHtml(data.lines[i]);
+                        fragment.appendChild(line);
+                    }
+                    el.appendChild(fragment);
+                    el.dataset.offset = String(offset + data.lines.length);
+                    // Auto-scroll to bottom
+                    el.scrollTop = el.scrollHeight;
+                } else if (offset === 0) {
+                    el.innerHTML = '<p class="text-gray-500">No output.</p>';
+                }
+
+                if (data.done) {
+                    stopPolling(el.dataset.stepId);
+                }
+            })
+            .catch(function() {});
+    }
+
+    function startPolling(el) {
+        var id = el.dataset.stepId;
+        if (pollers[id]) return;
+        fetchLogs(el);
+        pollers[id] = setInterval(function() { fetchLogs(el); }, 2000);
+    }
+
+    function stopPolling(id) {
+        if (pollers[id]) {
+            clearInterval(pollers[id]);
+            delete pollers[id];
+        }
+    }
+
+    function initLogViewers() {
+        document.querySelectorAll('details').forEach(function(details) {
+            var el = details.querySelector('.step-log');
+            if (!el) return;
+
+            if (details.open) {
+                startPolling(el);
+            }
+
+            details.addEventListener('toggle', function() {
+                if (details.open) {
+                    startPolling(el);
+                } else {
+                    stopPolling(el.dataset.stepId);
+                }
+            });
+        });
+    }
+
+    // Re-initialize after HTMX swaps the build-steps div
+    document.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target && evt.detail.target.id === 'build-steps') {
+            // Stop all existing pollers
+            Object.keys(pollers).forEach(stopPolling);
+            initLogViewers();
+        }
+    });
+
+    initLogViewers();
+})();
+</script>
 {{end}}

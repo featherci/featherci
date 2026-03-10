@@ -79,11 +79,14 @@ func (s *Server) setupRoutes() http.Handler {
 	// Dashboard (home page) - optional auth
 	mux.Handle("GET /", s.authMiddleware.OptionalAuth(http.HandlerFunc(s.handleDashboard)))
 
-	// Placeholder routes - these will be implemented in future steps
 	// Projects
-	mux.Handle("GET /projects", s.authMiddleware.RequireAuth(http.HandlerFunc(s.handleNotImplemented)))
-	mux.Handle("GET /projects/new", s.authMiddleware.RequireAuth(http.HandlerFunc(s.handleNotImplemented)))
-	mux.Handle("POST /projects", s.authMiddleware.RequireAuth(http.HandlerFunc(s.handleNotImplemented)))
+	mux.Handle("GET /projects", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.List)))
+	mux.Handle("GET /projects/new", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.New)))
+	mux.Handle("POST /projects", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Create)))
+	mux.Handle("GET /projects/{namespace}/{name}", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Show)))
+	mux.Handle("GET /projects/{namespace}/{name}/settings", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Settings)))
+	mux.Handle("POST /projects/{namespace}/{name}/settings", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Update)))
+	mux.Handle("POST /projects/{namespace}/{name}/delete", s.authMiddleware.RequireAuth(http.HandlerFunc(s.projectHandler.Delete)))
 
 	// API routes for workers
 	mux.HandleFunc("GET /api/worker/jobs", s.handleNotImplemented)
@@ -129,6 +132,13 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 
 	if user != nil {
+		// Get project count for user
+		projects, err := s.projectUsers.GetProjectsForUserWithStatus(r.Context(), user.ID)
+		if err != nil {
+			s.logger.Error("failed to get projects for dashboard", "error", err)
+			projects = nil
+		}
+
 		// Authenticated user - show dashboard
 		data := DashboardPageData{
 			PageData: PageData{
@@ -137,8 +147,8 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 				DevMode:   s.config.DevMode,
 			},
 			Stats: DashboardStats{
-				ProjectCount: 0, // TODO: Get from database
-				SuccessCount: 0,
+				ProjectCount: len(projects),
+				SuccessCount: 0, // TODO: Get from builds table
 				FailureCount: 0,
 				RunningCount: 0,
 			},

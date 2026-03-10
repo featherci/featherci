@@ -7,7 +7,7 @@ import "embed"
 // Templates are organized into:
 // - layouts/: Base page layouts
 // - components/: Reusable UI components
-// - pages/: Full page templates
+// - pages/: Full page templates (including subdirectories)
 //
-//go:embed layouts/*.html components/*.html pages/*.html
+//go:embed layouts/*.html components/*.html pages/*.html pages/**/*.html
 var Files embed.FS

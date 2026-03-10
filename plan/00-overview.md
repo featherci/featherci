@@ -108,7 +108,7 @@ Use this checklist to track completion. Each step can be done in a fresh session
 - [x] **06 - Web Server** (Sonnet) - HTTP routing, middleware
 - [x] **07 - Tailwind Setup** (Sonnet) - CSS build, HTMX
 - [x] **08 - Templates** (Opus) - Base layout, components
-- [ ] **09 - Project Management** (Opus) - Project CRUD, repo listing
+- [x] **09 - Project Management** (Opus) - Project CRUD, repo listing
 - [ ] **10 - Webhooks** (Sonnet) - Webhook handlers
 - [ ] **11 - Workflow Parsing** (Opus) - YAML parsing, validation
 - [ ] **12 - Build Model** (Opus) - Build/step data models

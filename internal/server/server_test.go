@@ -229,23 +229,10 @@ func TestNotImplemented(t *testing.T) {
 	srv, db := setupTestServer(t)
 	defer db.Close()
 
-	// First get a session
 	router := srv.setupRoutes()
 
-	loginReq := httptest.NewRequest(http.MethodGet, "/auth/dev", nil)
-	loginRec := httptest.NewRecorder()
-	router.ServeHTTP(loginRec, loginReq)
-
-	var sessionCookie *http.Cookie
-	for _, c := range loginRec.Result().Cookies() {
-		if c.Name == "featherci_session" {
-			sessionCookie = c
-			break
-		}
-	}
-
-	req := httptest.NewRequest(http.MethodGet, "/projects", nil)
-	req.AddCookie(sessionCookie)
+	// Test an unimplemented API route
+	req := httptest.NewRequest(http.MethodGet, "/api/worker/jobs", nil)
 	rec := httptest.NewRecorder()
 
 	router.ServeHTTP(rec, req)
@@ -292,6 +279,65 @@ func TestServerStart_Shutdown(t *testing.T) {
 	err = <-errCh
 	if err != nil {
 		t.Errorf("server shutdown error: %v", err)
+	}
+}
+
+func TestProjectsListRequiresAuth(t *testing.T) {
+	srv, db := setupTestServer(t)
+	defer db.Close()
+
+	router := srv.setupRoutes()
+
+	// Try to access projects without auth
+	req := httptest.NewRequest(http.MethodGet, "/projects", nil)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	// Should return 401 Unauthorized
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("projects without auth status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
+}
+
+func TestProjectsListWithAuth(t *testing.T) {
+	srv, db := setupTestServer(t)
+	defer db.Close()
+
+	router := srv.setupRoutes()
+
+	// First get a session via dev login
+	loginReq := httptest.NewRequest(http.MethodGet, "/auth/dev", nil)
+	loginRec := httptest.NewRecorder()
+	router.ServeHTTP(loginRec, loginReq)
+
+	var sessionCookie *http.Cookie
+	for _, c := range loginRec.Result().Cookies() {
+		if c.Name == "featherci_session" {
+			sessionCookie = c
+			break
+		}
+	}
+
+	if sessionCookie == nil {
+		t.Fatal("no session cookie returned from dev login")
+	}
+
+	// Now access projects with auth
+	req := httptest.NewRequest(http.MethodGet, "/projects", nil)
+	req.AddCookie(sessionCookie)
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("projects with auth status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	// Should contain the projects page content
+	body := rec.Body.String()
+	if !containsString(body, "Projects") {
+		t.Errorf("response body should contain 'Projects'")
 	}
 }
 

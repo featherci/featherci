@@ -1,0 +1,188 @@
+{{template "base" .}}
+
+{{define "title"}}Add Project - FeatherCI{{end}}
+
+{{define "content"}}
+<div class="space-y-6">
+    <!-- Header -->
+    <div>
+        <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-4">
+            <a href="/projects" class="hover:text-gray-700">Projects</a>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+            <span class="text-gray-900">Add Project</span>
+        </nav>
+        <h1 class="text-2xl font-bold text-gray-900">Add a Project</h1>
+        <p class="mt-1 text-sm text-gray-500">
+            Select a repository to connect to FeatherCI
+        </p>
+    </div>
+
+    {{if .Error}}
+    <div class="rounded-md bg-red-50 p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm font-medium text-red-800">{{.Error}}</p>
+            </div>
+        </div>
+    </div>
+    {{end}}
+
+    {{if .Repositories}}
+    <!-- Search/filter -->
+    <div class="card card-body">
+        <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+            </div>
+            <input type="text" 
+                   id="repo-search" 
+                   placeholder="Search repositories..." 
+                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-feather-500 focus:border-feather-500 sm:text-sm"
+                   oninput="filterRepos(this.value)">
+        </div>
+    </div>
+
+    <!-- Repository groups -->
+    <div class="space-y-6" id="repo-list">
+        {{range .Repositories}}
+        <div class="card" data-namespace="{{.Namespace | lower}}">
+            <div class="card-header bg-gray-50">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    <h2 class="text-sm font-semibold text-gray-900">{{.Namespace}}</h2>
+                    <span class="text-xs text-gray-500">({{len .Repositories}} repositories)</span>
+                </div>
+            </div>
+            <ul class="divide-y divide-gray-200">
+                {{range .Repositories}}
+                <li class="repo-item" data-name="{{.Name | lower}}" data-fullname="{{.FullName | lower}}">
+                    {{if .AlreadyAdded}}
+                    <a href="/projects/{{.ProjectFullName}}" class="block px-4 py-3 hover:bg-gray-50 transition-colors">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">{{.Name}}</p>
+                                    {{if .Private}}
+                                    <span class="inline-flex items-center text-xs text-gray-500">
+                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Private
+                                    </span>
+                                    {{end}}
+                                </div>
+                            </div>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                </svg>
+                                Added
+                            </span>
+                        </div>
+                    </a>
+                    {{else}}
+                    <form method="POST" action="/projects" class="block">
+                        <input type="hidden" name="full_name" value="{{.FullName}}">
+                        <input type="hidden" name="clone_url" value="{{.CloneURL}}">
+                        <button type="submit" class="w-full text-left px-4 py-3 hover:bg-feather-50 transition-colors focus:outline-none focus:bg-feather-50">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+                                    </svg>
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">{{.Name}}</p>
+                                        {{if .Private}}
+                                        <span class="inline-flex items-center text-xs text-gray-500">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Private
+                                        </span>
+                                        {{end}}
+                                    </div>
+                                </div>
+                                <span class="text-feather-600 text-sm font-medium group-hover:text-feather-700">
+                                    Add
+                                    <svg class="inline w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                                    </svg>
+                                </span>
+                            </div>
+                        </button>
+                    </form>
+                    {{end}}
+                </li>
+                {{end}}
+            </ul>
+        </div>
+        {{end}}
+    </div>
+
+    <div id="no-results" class="hidden card card-body text-center py-8">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No matching repositories</h3>
+        <p class="mt-1 text-sm text-gray-500">Try a different search term.</p>
+    </div>
+    {{else}}
+    <!-- No repositories available -->
+    <div class="card card-body text-center py-12">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-gray-900">No repositories found</h3>
+        <p class="mt-1 text-sm text-gray-500">
+            We couldn't find any repositories in your {{.User.Provider}} account.
+        </p>
+        <p class="mt-2 text-sm text-gray-500">
+            Make sure you have at least one repository and have granted FeatherCI access to it.
+        </p>
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{define "scripts"}}
+<script>
+function filterRepos(query) {
+    const q = query.toLowerCase().trim();
+    const groups = document.querySelectorAll('#repo-list > div[data-namespace]');
+    const noResults = document.getElementById('no-results');
+    let anyVisible = false;
+
+    groups.forEach(group => {
+        const items = group.querySelectorAll('.repo-item');
+        let groupHasVisible = false;
+
+        items.forEach(item => {
+            const name = item.dataset.name || '';
+            const fullname = item.dataset.fullname || '';
+            const matches = !q || name.includes(q) || fullname.includes(q);
+            item.style.display = matches ? '' : 'none';
+            if (matches) groupHasVisible = true;
+        });
+
+        group.style.display = groupHasVisible ? '' : 'none';
+        if (groupHasVisible) anyVisible = true;
+    });
+
+    noResults.classList.toggle('hidden', anyVisible);
+}
+</script>
+{{end}}

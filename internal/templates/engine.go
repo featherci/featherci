@@ -142,6 +142,9 @@ func templateFuncs() template.FuncMap {
 		"eq": func(a, b any) bool { return a == b },
 		"ne": func(a, b any) bool { return a != b },
 
+		// Pointer helpers
+		"deref": derefString,
+
 		// Iteration helpers
 		"seq": func(n int) []int {
 			s := make([]int, n)
@@ -154,12 +157,25 @@ func templateFuncs() template.FuncMap {
 }
 
 // formatTimeAgo returns a human-readable relative time string.
-func formatTimeAgo(t time.Time) string {
-	if t.IsZero() {
+func formatTimeAgo(t any) string {
+	var tm time.Time
+	switch v := t.(type) {
+	case time.Time:
+		tm = v
+	case *time.Time:
+		if v == nil {
+			return "never"
+		}
+		tm = *v
+	default:
 		return "never"
 	}
 
-	d := time.Since(t)
+	if tm.IsZero() {
+		return "never"
+	}
+
+	d := time.Since(tm)
 
 	switch {
 	case d < time.Minute:
@@ -295,4 +311,12 @@ func truncateString(s string, maxLen int) string {
 		return s[:maxLen]
 	}
 	return s[:maxLen-3] + "..."
+}
+
+// derefString safely dereferences a *string, returning empty string if nil.
+func derefString(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

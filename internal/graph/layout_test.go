@@ -99,9 +99,9 @@ func TestCalculate_FanOut(t *testing.T) {
 		t.Errorf("group 1: expected 2 nodes, got %d", len(layout.Groups[1].Nodes))
 	}
 
-	// 1 edge (group-level dedup: A→B and A→C are same group edge)
-	if len(layout.Edges) != 1 {
-		t.Errorf("expected 1 edge, got %d", len(layout.Edges))
+	// 2 edges: A→B and A→C (node-level, not group-level)
+	if len(layout.Edges) != 2 {
+		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
 	}
 }
 
@@ -129,9 +129,9 @@ func TestCalculate_FanIn(t *testing.T) {
 		t.Errorf("group 1: expected 1 node, got %d", len(layout.Groups[1].Nodes))
 	}
 
-	// 1 edge (same source group)
-	if len(layout.Edges) != 1 {
-		t.Errorf("expected 1 edge, got %d", len(layout.Edges))
+	// 2 edges: A→C and B→C (node-level, not group-level)
+	if len(layout.Edges) != 2 {
+		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
 	}
 }
 
@@ -163,9 +163,9 @@ func TestCalculate_Diamond(t *testing.T) {
 		t.Errorf("group 2: expected 1 node, got %d", len(layout.Groups[2].Nodes))
 	}
 
-	// 2 edges: col0→col1, col1→col2
-	if len(layout.Edges) != 2 {
-		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
+	// 4 edges: A→B, A→C, B→D, C→D (node-level)
+	if len(layout.Edges) != 4 {
+		t.Errorf("expected 4 edges, got %d", len(layout.Edges))
 	}
 }
 
@@ -230,22 +230,57 @@ func TestCalculate_ConnectionPoints(t *testing.T) {
 	}
 
 	for i, g := range layout.Groups {
-		// LeftX should be at group X
-		if g.LeftX != g.X {
-			t.Errorf("group %d: LeftX %d != X %d", i, g.LeftX, g.X)
+		for j, n := range g.Nodes {
+			// LeftX should be at group X
+			if n.LeftX != g.X {
+				t.Errorf("group %d node %d: LeftX %d != group X %d", i, j, n.LeftX, g.X)
+			}
+			// RightX should be at group X + Width
+			if n.RightX != g.X+g.Width {
+				t.Errorf("group %d node %d: RightX %d != group X+Width %d", i, j, n.RightX, g.X+g.Width)
+			}
+			// LeftY and RightY should be node's vertical center
+			expectedY := n.Y + 18 // nodeHeight/2 = 36/2 = 18
+			if n.LeftY != expectedY {
+				t.Errorf("group %d node %d: LeftY %d != node center %d", i, j, n.LeftY, expectedY)
+			}
+			if n.RightY != expectedY {
+				t.Errorf("group %d node %d: RightY %d != node center %d", i, j, n.RightY, expectedY)
+			}
 		}
-		// RightX should be at group X + Width
-		if g.RightX != g.X+g.Width {
-			t.Errorf("group %d: RightX %d != X+Width %d", i, g.RightX, g.X+g.Width)
-		}
-		// LeftY and RightY should be vertical center
-		expectedY := g.Y + g.Height/2
-		if g.LeftY != expectedY {
-			t.Errorf("group %d: LeftY %d != center %d", i, g.LeftY, expectedY)
-		}
-		if g.RightY != expectedY {
-			t.Errorf("group %d: RightY %d != center %d", i, g.RightY, expectedY)
-		}
+	}
+}
+
+func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
+	// Col 0: [build-docker, simple]
+	// Col 1: [deploy-to-staging] depends on both, [flipper] depends only on simple
+	steps := []*models.BuildStep{
+		makeStep("build-docker"),
+		makeStep("simple"),
+		makeStep("deploy-to-staging", "build-docker", "simple"),
+		makeStep("flipper", "simple"),
+	}
+	layout := Calculate(steps)
+	if layout == nil {
+		t.Fatal("expected non-nil layout")
+	}
+
+	if len(layout.Groups) != 2 {
+		t.Fatalf("expected 2 groups, got %d", len(layout.Groups))
+	}
+
+	// 3 edges: build-docker→deploy, simple→deploy, simple→flipper
+	if len(layout.Edges) != 3 {
+		t.Errorf("expected 3 edges, got %d", len(layout.Edges))
+	}
+
+	// Verify edges target different Y positions (flipper and deploy-to-staging are at different Y)
+	edgeYs := make(map[int]bool)
+	for _, e := range layout.Edges {
+		edgeYs[e.ToY] = true
+	}
+	if len(edgeYs) < 2 {
+		t.Error("expected edges to target different Y positions for different nodes")
 	}
 }
 

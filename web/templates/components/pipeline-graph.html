@@ -8,13 +8,15 @@
     <path d="{{edgePath .}}" stroke="#D1D5DB" stroke-width="2" fill="none"/>
     {{end}}
 
-    <!-- Connection dots -->
+    <!-- Connection dots (at node level) -->
     {{range $layout.Groups}}
-    {{if gt .Column 0}}
+    {{range .Nodes}}
+    {{if .HasIncoming}}
     <circle cx="{{.LeftX}}" cy="{{.LeftY}}" r="4" fill="#D1D5DB"/>
     {{end}}
-    {{if lt (add .Column 1) (len $layout.Groups)}}
+    {{if .HasOutgoing}}
     <circle cx="{{.RightX}}" cy="{{.RightY}}" r="4" fill="#D1D5DB"/>
+    {{end}}
     {{end}}
     {{end}}
 

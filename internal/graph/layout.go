@@ -49,6 +49,10 @@ type Node struct {
 	RequiresApproval bool
 	Approved         bool // true if ApprovedBy is set (step was approved)
 	X, Y             int  // absolute position within SVG
+	LeftX, LeftY     int  // center-left connection point (at group edge)
+	RightX, RightY   int  // center-right connection point (at group edge)
+	HasIncoming      bool // true if any edge targets this node
+	HasOutgoing      bool // true if any edge originates from this node
 }
 
 // Edge connects the right side of one group to the left side of another.
@@ -157,10 +161,15 @@ func Calculate(steps []*models.BuildStep) *Layout {
 	for i := range groups {
 		groups[i].Y = graphPadY + (maxHeight-groups[i].Height)/2
 
-		// Calculate absolute node positions
+		// Calculate absolute node positions and connection points
 		for j := range groups[i].Nodes {
 			groups[i].Nodes[j].X = groups[i].X + groupPadX
 			groups[i].Nodes[j].Y = groups[i].Y + groupPadY + j*(nodeHeight+nodeGapY)
+			nodeCenterY := groups[i].Nodes[j].Y + nodeHeight/2
+			groups[i].Nodes[j].LeftX = groups[i].X
+			groups[i].Nodes[j].LeftY = nodeCenterY
+			groups[i].Nodes[j].RightX = groups[i].X + groups[i].Width
+			groups[i].Nodes[j].RightY = nodeCenterY
 		}
 
 		// Connection points
@@ -172,15 +181,16 @@ func Calculate(steps []*models.BuildStep) *Layout {
 
 	totalWidth := x - colGap + graphPadX
 
-	// Build edges between groups based on dependencies
-	// Map step name to its group column
-	nameToCol := make(map[string]int, len(steps))
-	for _, s := range steps {
-		nameToCol[s.Name] = columns[s.Name]
+	// Build node-to-node edges based on dependencies
+	// Map step name to its Node pointer (within the groups slice)
+	nameToNode := make(map[string]*Node, len(steps))
+	for i := range groups {
+		for j := range groups[i].Nodes {
+			nameToNode[groups[i].Nodes[j].Name] = &groups[i].Nodes[j]
+		}
 	}
-
-	// Track unique group-to-group edges (avoid duplicates)
-	type edgeKey struct{ from, to int }
+	// Track unique node-to-node edges
+	type edgeKey struct{ from, to string }
 	seenEdges := make(map[edgeKey]bool)
 
 	var edges []Edge
@@ -188,33 +198,32 @@ func Calculate(steps []*models.BuildStep) *Layout {
 		if len(s.DependsOn) == 0 {
 			continue
 		}
-		toCol := columns[s.Name]
-		toGroup := groupByCol[toCol]
-		if toGroup == nil {
+		toNode := nameToNode[truncate(s.Name, 24)]
+		if toNode == nil {
 			continue
 		}
 
 		for _, depName := range s.DependsOn {
-			fromCol, ok := nameToCol[depName]
-			if !ok {
-				continue
-			}
-			fromGroup := groupByCol[fromCol]
-			if fromGroup == nil {
+			truncDep := truncate(depName, 24)
+			fromNode := nameToNode[truncDep]
+			if fromNode == nil {
 				continue
 			}
 
-			key := edgeKey{fromCol, toCol}
+			key := edgeKey{fromNode.Name, toNode.Name}
 			if seenEdges[key] {
 				continue
 			}
 			seenEdges[key] = true
 
+			fromNode.HasOutgoing = true
+			toNode.HasIncoming = true
+
 			edges = append(edges, Edge{
-				FromX: fromGroup.RightX,
-				FromY: fromGroup.RightY,
-				ToX:   toGroup.LeftX,
-				ToY:   toGroup.LeftY,
+				FromX: fromNode.RightX,
+				FromY: fromNode.RightY,
+				ToX:   toNode.LeftX,
+				ToY:   toNode.LeftY,
 			})
 		}
 	}

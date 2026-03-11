@@ -34,7 +34,7 @@ docker run -d \
   -e FEATHERCI_ADMINS=yourgithubusername \
   -e FEATHERCI_GITHUB_CLIENT_ID=your_client_id \
   -e FEATHERCI_GITHUB_CLIENT_SECRET=your_client_secret \
-  featherci/featherci:latest
+  ghcr.io/featherci/featherci:latest
 ```
 
 The Docker socket mount (`/var/run/docker.sock`) is required so FeatherCI can run build steps in containers. See the [Docker deployment](#docker-deployment) section for more details.
@@ -247,7 +247,7 @@ docker run -d \
   -e FEATHERCI_MODE=worker \
   -e FEATHERCI_MASTER_URL=https://ci.example.com \
   -e FEATHERCI_WORKER_SECRET=your-shared-secret \
-  featherci/featherci:latest
+  ghcr.io/featherci/featherci:latest
 ```
 
 ## Docker Deployment

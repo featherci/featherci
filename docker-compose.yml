@@ -1,6 +1,6 @@
 services:
   featherci:
-    image: featherci/featherci:latest
+    image: ghcr.io/featherci/featherci:latest
     build:
       context: .
       args:

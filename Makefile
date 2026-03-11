@@ -137,8 +137,8 @@ docker-build:
 		--build-arg VERSION=$(VERSION) \
 		--build-arg COMMIT=$(COMMIT) \
 		--build-arg BUILD_DATE=$(BUILD_DATE) \
-		-t featherci/featherci:latest \
-		-t featherci/featherci:$(VERSION) \
+		-t ghcr.io/featherci/featherci:latest \
+		-t ghcr.io/featherci/featherci:$(VERSION) \
 		.
 
 ## docker-run: Start FeatherCI via Docker Compose

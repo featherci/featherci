@@ -112,7 +112,7 @@
   -e FEATHERCI_ADMINS=yourusername \
   -e FEATHERCI_GITHUB_CLIENT_ID=your_client_id \
   -e FEATHERCI_GITHUB_CLIENT_SECRET=your_client_secret \
-  featherci/featherci:latest</code></pre>
+  ghcr.io/featherci/featherci:latest</code></pre>
 
         <h3>Docker Socket Mapping</h3>
 
@@ -143,7 +143,7 @@
 
         <pre><code>services:
   featherci:
-    image: featherci/featherci:latest
+    image: ghcr.io/featherci/featherci:latest
     ports:
       - "8080:8080"
     volumes:
@@ -222,7 +222,7 @@ docker run -d \
   -e FEATHERCI_WORKER_SECRET=your-shared-secret \
   -e FEATHERCI_SECRET_KEY=... \
   -e FEATHERCI_BASE_URL=https://ci.example.com \
-  featherci/featherci:latest
+  ghcr.io/featherci/featherci:latest
 
 # Worker (on another host)
 docker run -d \
@@ -231,7 +231,7 @@ docker run -d \
   -e FEATHERCI_MODE=worker \
   -e FEATHERCI_MASTER_URL=https://ci.example.com \
   -e FEATHERCI_WORKER_SECRET=your-shared-secret \
-  featherci/featherci:latest</code></pre>
+  ghcr.io/featherci/featherci:latest</code></pre>
 
         <hr>
 
@@ -407,7 +407,7 @@ spec:
     spec:
       containers:
         - name: featherci
-          image: featherci/featherci:latest
+          image: ghcr.io/featherci/featherci:latest
           ports:
             - containerPort: 8080
           env:

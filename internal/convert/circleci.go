@@ -2,6 +2,7 @@ package convert
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -223,18 +224,6 @@ func convertCircleCI(data []byte, sourceFile string) (*Result, error) {
 		Workflow:   &workflow.Workflow{},
 	}
 
-	// Orbs info (not a warning if we handle common ones)
-	if len(cc.Orbs) > 0 {
-		orbNames := make([]string, 0, len(cc.Orbs))
-		for name := range cc.Orbs {
-			orbNames = append(orbNames, name)
-		}
-		result.Warnings = append(result.Warnings, Warning{
-			Feature: "orbs",
-			Message: fmt.Sprintf("Orbs used: %s. Common orb commands have been expanded to shell equivalents.", strings.Join(orbNames, ", ")),
-		})
-	}
-
 	// Pick the first workflow (or "build" if only jobs exist)
 	var wfName string
 	var wfJobs []circleWorkflowJob
@@ -261,12 +250,8 @@ func convertCircleCI(data []byte, sourceFile string) (*Result, error) {
 		result.Workflow.Name = "Converted Pipeline"
 	}
 
-	// Default triggers (CircleCI triggers are in filters, not easily mappable)
-	result.Workflow.On.Push = &workflow.PushTrigger{}
-	result.Warnings = append(result.Warnings, Warning{
-		Feature: "triggers",
-		Message: "CircleCI trigger filters don't map directly to FeatherCI. Defaulting to trigger on all pushes — adjust the 'on' section as needed.",
-	})
+	// Infer trigger branches from workflow job filters.
+	result.Workflow.On.Push = inferTriggerBranches(wfJobs)
 
 	// Convert each job in the workflow
 	for _, wfJob := range wfJobs {
@@ -506,6 +491,49 @@ func expandOrbCommand(cs circleStep) []string {
 		return cmds
 	}
 	return nil
+}
+
+// inferTriggerBranches extracts common branch filters from workflow jobs to set as push trigger branches.
+// If all filtered jobs share the same "only" branches, those become the trigger branches.
+// Otherwise, defaults to triggering on all pushes (no branch filter).
+func inferTriggerBranches(wfJobs []circleWorkflowJob) *workflow.PushTrigger {
+	trigger := &workflow.PushTrigger{}
+
+	// Collect "only" branch sets from jobs that have filters.
+	var branchSets []map[string]bool
+	for _, wfJob := range wfJobs {
+		if wfJob.Filters == nil || wfJob.Filters.Branches == nil {
+			continue
+		}
+		if len(wfJob.Filters.Branches.Only) > 0 {
+			set := make(map[string]bool)
+			for _, b := range wfJob.Filters.Branches.Only {
+				set[b] = true
+			}
+			branchSets = append(branchSets, set)
+		}
+	}
+
+	if len(branchSets) == 0 {
+		return trigger // no filters → trigger on all pushes
+	}
+
+	// Find the union of all branch filters.
+	union := make(map[string]bool)
+	for _, set := range branchSets {
+		for b := range set {
+			union[b] = true
+		}
+	}
+
+	branches := make([]string, 0, len(union))
+	for b := range union {
+		branches = append(branches, b)
+	}
+	// Sort for deterministic output.
+	sort.Strings(branches)
+	trigger.Branches = branches
+	return trigger
 }
 
 // convertCircleFilters converts CircleCI workflow job filters to a FeatherCI if condition.

@@ -500,7 +500,6 @@ workflows:
 	}
 
 	for _, expected := range []string{
-		"orbs",
 		"machine executor",
 		"parallelism",
 		"store_artifacts",
@@ -512,7 +511,12 @@ workflows:
 		}
 	}
 
-	// Filters should now be converted to an if condition, not a warning
+	// Orbs should NOT produce a warning (common orbs are auto-expanded)
+	if warnFeatures["orbs"] {
+		t.Error("orbs should not produce a warning")
+	}
+
+	// Filters should be converted to an if condition, not a warning
 	var deployStep *workflow.Step
 	for i := range result.Workflow.Steps {
 		if result.Workflow.Steps[i].Name == "deploy" {
@@ -525,6 +529,14 @@ workflows:
 	}
 	if deployStep.If != `branch == "main"` {
 		t.Errorf("expected if condition 'branch == \"main\"', got '%s'", deployStep.If)
+	}
+
+	// Trigger branches should be inferred from the "only: main" filter
+	if result.Workflow.On.Push == nil {
+		t.Fatal("expected push trigger")
+	}
+	if len(result.Workflow.On.Push.Branches) != 1 || result.Workflow.On.Push.Branches[0] != "main" {
+		t.Errorf("expected push trigger branches [main], got %v", result.Workflow.On.Push.Branches)
 	}
 }
 

@@ -3,6 +3,7 @@
 package convert
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -307,7 +308,13 @@ func marshalClean(wf *workflow.Workflow) ([]byte, error) {
 		cw.Steps = append(cw.Steps, cs)
 	}
 
-	return yaml.Marshal(cw)
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(cw); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // sanitizeName converts a string to a valid FeatherCI step name (alphanumeric, hyphens, underscores).

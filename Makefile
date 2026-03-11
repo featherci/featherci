@@ -43,7 +43,7 @@ endif
 # HTMX version
 HTMX_VERSION := 1.9.10
 
-.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets docker-build docker-run docker-stop docker-logs release install docs-css docs-css-watch docs-serve
+.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets docker-build docker-run docker-stop docker-logs release install docs-css docs-css-watch docs-serve bump-patch bump-minor bump-major
 
 all: build
 
@@ -157,11 +157,12 @@ docker-logs:
 release: assets
 	@echo "Building release binaries..."
 	@mkdir -p dist
-	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-linux-amd64 $(CMD_DIR)
-	GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-linux-arm64 $(CMD_DIR)
-	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-darwin-amd64 $(CMD_DIR)
-	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-darwin-arm64 $(CMD_DIR)
-	@cd dist && for f in featherci-*; do tar -czf "$$f.tar.gz" "$$f"; done
+	GOOS=linux GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-linux-amd64/featherci $(CMD_DIR)
+	GOOS=linux GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-linux-arm64/featherci $(CMD_DIR)
+	GOOS=darwin GOARCH=amd64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-darwin-amd64/featherci $(CMD_DIR)
+	GOOS=darwin GOARCH=arm64 $(GOBUILD) $(LDFLAGS) -o dist/featherci-darwin-arm64/featherci $(CMD_DIR)
+	@for d in dist/featherci-*; do cp scripts/config.yaml.example "$$d/config.yaml.example"; done
+	@cd dist && for d in featherci-*; do tar -czf "$$d.tar.gz" -C "$$d" .; done
 	@echo "Release binaries in dist/"
 
 ## install: Install binary to /usr/local/bin
@@ -179,6 +180,36 @@ docs-css-watch: tailwind-download
 ## docs-serve: Serve docs site locally
 docs-serve: docs-css
 	cd docs && python3 -m http.server 3000
+
+## bump-patch: Tag a new patch release (v0.1.0 → v0.1.1) and push
+bump-patch:
+	@latest=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
+	major=$$(echo $$latest | sed 's/v//' | cut -d. -f1); \
+	minor=$$(echo $$latest | sed 's/v//' | cut -d. -f2); \
+	patch=$$(echo $$latest | sed 's/v//' | cut -d. -f3); \
+	next="v$$major.$$minor.$$((patch + 1))"; \
+	echo "Bumping $$latest → $$next"; \
+	git tag -a $$next -m "Release $$next" && \
+	git push origin $$next
+
+## bump-minor: Tag a new minor release (v0.1.0 → v0.2.0) and push
+bump-minor:
+	@latest=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
+	major=$$(echo $$latest | sed 's/v//' | cut -d. -f1); \
+	minor=$$(echo $$latest | sed 's/v//' | cut -d. -f2); \
+	next="v$$major.$$((minor + 1)).0"; \
+	echo "Bumping $$latest → $$next"; \
+	git tag -a $$next -m "Release $$next" && \
+	git push origin $$next
+
+## bump-major: Tag a new major release (v0.1.0 → v1.0.0) and push
+bump-major:
+	@latest=$$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0"); \
+	major=$$(echo $$latest | sed 's/v//' | cut -d. -f1); \
+	next="v$$((major + 1)).0.0"; \
+	echo "Bumping $$latest → $$next"; \
+	git tag -a $$next -m "Release $$next" && \
+	git push origin $$next
 
 ## help: Show this help message
 help:

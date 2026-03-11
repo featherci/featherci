@@ -39,6 +39,18 @@ docker run -d \
 
 The Docker socket mount (`/var/run/docker.sock`) is required so FeatherCI can run build steps in containers. See the [Docker deployment](#docker-deployment) section for more details.
 
+### Homebrew (macOS / Linux)
+
+```bash
+brew install featherci/tap/featherci
+```
+
+### Install Script (Linux)
+
+```bash
+curl -sSL https://featherci.dev/install.sh | bash
+```
+
 ### From Source
 
 ```bash
@@ -60,11 +72,16 @@ This starts FeatherCI with `--dev` flag, which skips OAuth and auto-logs in as a
 
 ## Configuration
 
-FeatherCI is configured via environment variables or a `.env` file. Copy `.env.example` to get started:
+FeatherCI can be configured with a **YAML config file**, environment variables, or a `.env` file. Precedence: env vars > `.env` > YAML config > defaults.
 
 ```bash
-cp .env.example .env
+# Copy the example config
+cp scripts/config.yaml.example config.yaml
+# Or for system-wide installs
+sudo cp scripts/config.yaml.example /etc/featherci/config.yaml
 ```
+
+FeatherCI automatically checks `/etc/featherci/config.yaml` and `./config.yaml`. Use `--config` to specify a custom path.
 
 ### Required Settings
 

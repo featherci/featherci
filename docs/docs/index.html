@@ -116,6 +116,28 @@
 
         <p>See <a href="deployment.html">Docker Deployment</a> for production configuration, Docker Compose, and the sibling container pattern.</p>
 
+        <h3>Homebrew (macOS / Linux)</h3>
+
+        <pre><code>brew install featherci/tap/featherci</code></pre>
+
+        <p>Create a config file and start the service:</p>
+
+        <pre><code># Generate an encryption key
+featherci --generate-key
+
+# Create config file
+mkdir -p $(brew --prefix)/etc/featherci
+cp $(brew --prefix)/share/featherci/config.yaml.example \
+   $(brew --prefix)/etc/featherci/config.yaml
+
+# Edit with your settings (secret key, OAuth credentials, admins)
+$EDITOR $(brew --prefix)/etc/featherci/config.yaml
+
+# Start as a background service
+brew services start featherci</code></pre>
+
+        <p>Logs are written to <code>$(brew --prefix)/var/log/featherci/</code>. Data is stored in <code>$(brew --prefix)/var/featherci/</code>.</p>
+
         <h3>Binary Download</h3>
 
         <p>Download a pre-built binary from the <a href="https://github.com/featherci/featherci/releases">GitHub releases page</a>:</p>
@@ -162,7 +184,9 @@ curl http://localhost:8080/ready
 
         <h2 id="configuration">Configuration</h2>
 
-        <p>FeatherCI is configured entirely through environment variables. You can also use a <code>.env</code> file in the working directory — environment variables take precedence.</p>
+        <p>FeatherCI can be configured with a <strong>YAML config file</strong>, environment variables, or a <code>.env</code> file. Precedence (highest to lowest): environment variables &gt; <code>.env</code> file &gt; YAML config file &gt; defaults.</p>
+
+        <p>The config file is automatically loaded from <code>/etc/featherci/config.yaml</code> or <code>./config.yaml</code>. You can specify a custom path with <code>featherci --config /path/to/config.yaml</code> or the <code>FEATHERCI_CONFIG</code> environment variable.</p>
 
         <h3>Required Settings</h3>
 

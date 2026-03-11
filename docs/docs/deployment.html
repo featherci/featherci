@@ -253,23 +253,46 @@ docker run -d \
         <pre><code>sudo useradd --system --shell /usr/sbin/nologin --create-home --home-dir /var/lib/featherci featherci
 sudo usermod -aG docker featherci</code></pre>
 
-        <h3>Create the Environment File</h3>
+        <h3>Configure</h3>
 
-        <p>Store configuration in <code>/etc/featherci/featherci.env</code>:</p>
+        <p>Create a YAML config file at <code>/etc/featherci/config.yaml</code>:</p>
 
         <pre><code>sudo mkdir -p /etc/featherci
-sudo tee /etc/featherci/featherci.env > /dev/null &lt;&lt;'EOF'
-FEATHERCI_SECRET_KEY=your-base64-encoded-key
+sudo tee /etc/featherci/config.yaml > /dev/null &lt;&lt;'EOF'
+bind_addr: ":8080"
+base_url: "https://ci.example.com"
+mode: standalone
+database_path: /var/lib/featherci/featherci.db
+secret_key: "your-base64-encoded-key"
+admins:
+  - yourusername
+max_concurrent: 2
+cache_path: /var/lib/featherci/cache
+workspace_path: /var/lib/featherci/workspaces
+
+github:
+  client_id: "your_client_id"
+  client_secret: "your_client_secret"
+EOF
+sudo chmod 600 /etc/featherci/config.yaml</code></pre>
+
+        <p>Generate the secret key with <code>featherci --generate-key</code> and paste it into the config file.</p>
+
+        <p>FeatherCI automatically checks <code>/etc/featherci/config.yaml</code> on startup. You can also specify a custom path with <code>featherci --config /path/to/config.yaml</code> or the <code>FEATHERCI_CONFIG</code> environment variable.</p>
+
+        <details>
+          <summary>Alternative: Environment file</summary>
+          <p class="mt-2">If you prefer environment variables, create <code>/etc/featherci/featherci.env</code> instead and reference it from the service file with <code>EnvironmentFile=/etc/featherci/featherci.env</code>:</p>
+          <pre><code>FEATHERCI_SECRET_KEY=your-base64-encoded-key
 FEATHERCI_BASE_URL=https://ci.example.com
 FEATHERCI_ADMINS=yourusername
-FEATHERCI_BIND_ADDR=:8080
-FEATHERCI_DATABASE_PATH=/var/lib/featherci/featherci.db
-FEATHERCI_CACHE_PATH=/var/lib/featherci/cache
-FEATHERCI_WORKSPACE_PATH=/var/lib/featherci/workspaces
 FEATHERCI_GITHUB_CLIENT_ID=your_client_id
 FEATHERCI_GITHUB_CLIENT_SECRET=your_client_secret
-EOF
-sudo chmod 600 /etc/featherci/featherci.env</code></pre>
+FEATHERCI_DATABASE_PATH=/var/lib/featherci/featherci.db
+FEATHERCI_CACHE_PATH=/var/lib/featherci/cache
+FEATHERCI_WORKSPACE_PATH=/var/lib/featherci/workspaces</code></pre>
+          <p>Environment variables always take precedence over the YAML config file.</p>
+        </details>
 
         <h3>Create the Service File</h3>
 

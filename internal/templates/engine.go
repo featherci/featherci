@@ -152,8 +152,13 @@ func templateFuncs() template.FuncMap {
 		"ne": func(a, b any) bool { return a != b },
 
 		// Pointer helpers
-		"deref":       derefString,
-		"derefInt64":  func(p *int64) int64 { if p == nil { return 0 }; return *p },
+		"deref": derefString,
+		"derefInt64": func(p *int64) int64 {
+			if p == nil {
+				return 0
+			}
+			return *p
+		},
 
 		// Pipeline graph
 		"pipelineGraph": func(steps []*models.BuildStep) *graph.Layout {

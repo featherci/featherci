@@ -28,6 +28,7 @@ class Featherci < Formula
 
   def install
     bin.install "featherci"
+    (share/"featherci").install "config.yaml.example"
   end
 
   def post_install
@@ -37,25 +38,25 @@ class Featherci < Formula
 
   def caveats
     <<~EOS
-      To start FeatherCI, first create a configuration:
-        featherci --generate-key  # Generate an encryption key
+      To start FeatherCI, first generate an encryption key:
+        featherci --generate-key
 
-      Then set environment variables or create a config file.
-      See: https://github.com/featherci/featherci#configuration
+      Then create a config file at #{etc}/featherci/config.yaml:
+        mkdir -p #{etc}/featherci
+        cp #{opt_share}/featherci/config.yaml.example #{etc}/featherci/config.yaml
+
+      Edit the config file with your settings (secret key, OAuth, admins).
 
       Start the service:
         brew services start featherci
 
       Or run manually:
-        featherci
+        featherci --config #{etc}/featherci/config.yaml
     EOS
   end
 
   service do
-    run [opt_bin/"featherci"]
-    environment_variables FEATHERCI_DATABASE_PATH: var/"featherci/featherci.db",
-                          FEATHERCI_CACHE_PATH: var/"featherci/cache",
-                          FEATHERCI_WORKSPACE_PATH: var/"featherci/workspaces"
+    run [opt_bin/"featherci", "--config", etc/"featherci/config.yaml"]
     keep_alive true
     working_dir var/"featherci"
     log_path var/"log/featherci/featherci.log"

@@ -1,0 +1,67 @@
+# FeatherCI Configuration
+# Place this file at /etc/featherci/config.yaml or ./config.yaml
+#
+# Precedence (highest to lowest):
+#   1. Environment variables (FEATHERCI_*)
+#   2. .env file in the working directory
+#   3. This YAML config file
+#
+# You can also specify a custom path with:
+#   featherci --config /path/to/config.yaml
+#   FEATHERCI_CONFIG=/path/to/config.yaml featherci
+
+# Server binding address
+bind_addr: ":8080"
+
+# Public URL for OAuth callbacks and webhooks
+base_url: "https://ci.example.com"
+
+# Operating mode: standalone, master, or worker
+mode: standalone
+
+# Path to SQLite database file
+database_path: /var/lib/featherci/featherci.db
+
+# 32-byte base64-encoded encryption key (required)
+# Generate with: featherci --generate-key
+secret_key: ""
+
+# Admin usernames (must match OAuth provider username)
+admins:
+  - yourusername
+
+# Max concurrent build steps per worker (default: 2)
+max_concurrent: 2
+
+# Build cache directory
+cache_path: /var/lib/featherci/cache
+
+# Build workspace directory (cloned repos)
+workspace_path: /var/lib/featherci/workspaces
+
+# GitHub OAuth
+# Create at: https://github.com/settings/developers
+# Callback URL: {base_url}/auth/github/callback
+github:
+  client_id: ""
+  client_secret: ""
+
+# GitLab OAuth (optional)
+# Works with gitlab.com or self-hosted instances
+# gitlab:
+#   url: "https://gitlab.com"
+#   client_id: ""
+#   client_secret: ""
+
+# Gitea/Forgejo OAuth (optional)
+# gitea:
+#   url: "https://gitea.example.com"
+#   client_id: ""
+#   client_secret: ""
+
+# Distributed mode settings
+# For master mode, set a shared secret for worker authentication:
+# worker_secret: "a-long-random-string"
+#
+# For worker mode, also set the master URL:
+# master_url: "https://ci.example.com"

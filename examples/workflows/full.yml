@@ -1,0 +1,37 @@
+name: Full Pipeline
+
+on:
+  push:
+    branches: [main]
+
+steps:
+  - name: lint
+    image: golangci/golangci-lint:latest
+    commands:
+      - golangci-lint run
+
+  - name: test
+    image: golang:1.22
+    commands:
+      - go test -v -race ./...
+    cache:
+      key: go-{{ checksum "go.sum" }}
+      paths:
+        - /go/pkg/mod
+
+  - name: build
+    image: golang:1.22
+    depends_on: [lint, test]
+    commands:
+      - go build -o app ./cmd/app
+
+  - name: approve-deploy
+    type: approval
+    depends_on: [build]
+
+  - name: deploy
+    image: alpine:latest
+    depends_on: [approve-deploy]
+    commands:
+      - echo "Deploying..."
+    if: branch == "main"

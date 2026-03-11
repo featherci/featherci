@@ -20,7 +20,7 @@ func TestRegistry_Empty(t *testing.T) {
 	}
 }
 
-func TestRegistry_GitHub(t *testing.T) {
+func TestRegistry_Get(t *testing.T) {
 	cfg := &config.Config{
 		BaseURL:            "http://localhost:8080",
 		GitHubClientID:     "github-id",
@@ -39,54 +39,24 @@ func TestRegistry_GitHub(t *testing.T) {
 	if p.Name() != "github" {
 		t.Errorf("Name() = %q, want %q", p.Name(), "github")
 	}
-
-	_, ok = r.Get("gitlab")
-	if ok {
-		t.Error("Get(gitlab) should return false")
-	}
 }
 
-func TestRegistry_GitLab(t *testing.T) {
+func TestRegistry_Get_NotFound(t *testing.T) {
 	cfg := &config.Config{
 		BaseURL:            "http://localhost:8080",
-		GitLabURL:          "https://gitlab.com",
-		GitLabClientID:     "gitlab-id",
-		GitLabClientSecret: "gitlab-secret",
+		GitHubClientID:     "github-id",
+		GitHubClientSecret: "github-secret",
 	}
 	r := NewRegistry(cfg)
 
-	if r.Count() != 1 {
-		t.Errorf("Count() = %d, want 1", r.Count())
+	_, ok := r.Get("gitlab")
+	if ok {
+		t.Error("Get(gitlab) should return false when GitLab is not configured")
 	}
 
-	p, ok := r.Get("gitlab")
-	if !ok {
-		t.Fatal("Get(gitlab) returned false")
-	}
-	if p.Name() != "gitlab" {
-		t.Errorf("Name() = %q, want %q", p.Name(), "gitlab")
-	}
-}
-
-func TestRegistry_Gitea(t *testing.T) {
-	cfg := &config.Config{
-		BaseURL:           "http://localhost:8080",
-		GiteaURL:          "https://gitea.example.com",
-		GiteaClientID:     "gitea-id",
-		GiteaClientSecret: "gitea-secret",
-	}
-	r := NewRegistry(cfg)
-
-	if r.Count() != 1 {
-		t.Errorf("Count() = %d, want 1", r.Count())
-	}
-
-	p, ok := r.Get("gitea")
-	if !ok {
-		t.Fatal("Get(gitea) returned false")
-	}
-	if p.Name() != "gitea" {
-		t.Errorf("Name() = %q, want %q", p.Name(), "gitea")
+	_, ok = r.Get("nonexistent")
+	if ok {
+		t.Error("Get(nonexistent) should return false")
 	}
 }
 
@@ -113,7 +83,6 @@ func TestRegistry_AllProviders(t *testing.T) {
 		t.Errorf("Available() length = %d, want 3", len(available))
 	}
 
-	// Check all providers are accessible
 	for _, name := range []string{"github", "gitlab", "gitea"} {
 		p, ok := r.Get(name)
 		if !ok {

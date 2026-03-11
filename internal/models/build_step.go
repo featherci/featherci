@@ -62,11 +62,11 @@ type BuildStep struct {
 	TimeoutMinutes int    `db:"timeout_minutes"`
 
 	// Deserialized fields (not stored directly)
-	Commands        []string          `db:"-"`
-	Env             map[string]string `db:"-"`
-	DependsOn       []string          `db:"-"`
-	Cache           *CacheConfig      `db:"-"`
-	CacheResolvedKey string           `db:"-"`
+	Commands         []string          `db:"-"`
+	Env              map[string]string `db:"-"`
+	DependsOn        []string          `db:"-"`
+	Cache            *CacheConfig      `db:"-"`
+	CacheResolvedKey string            `db:"-"`
 
 	// Loaded via joins
 	ApprovedByUser *User `db:"-"`

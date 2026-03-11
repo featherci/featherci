@@ -34,10 +34,10 @@ func (n *SlackNotifier) Send(ctx context.Context, event BuildEvent) error {
 	payload := map[string]any{
 		"attachments": []map[string]any{
 			{
-				"color":     color,
-				"fallback":  fmt.Sprintf("%s Build #%d %s", event.ProjectName, event.BuildNumber, event.Status),
-				"pretext":   fmt.Sprintf("%s *%s* build #%d", event.StatusEmoji(), event.ProjectName, event.BuildNumber),
-				"title":     fmt.Sprintf("Build #%d - %s", event.BuildNumber, event.Status),
+				"color":      color,
+				"fallback":   fmt.Sprintf("%s Build #%d %s", event.ProjectName, event.BuildNumber, event.Status),
+				"pretext":    fmt.Sprintf("%s *%s* build #%d", event.StatusEmoji(), event.ProjectName, event.BuildNumber),
+				"title":      fmt.Sprintf("Build #%d - %s", event.BuildNumber, event.Status),
 				"title_link": event.BuildURL,
 				"fields": []map[string]any{
 					{"title": "Branch", "value": event.Branch, "short": true},

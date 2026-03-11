@@ -1,0 +1,11 @@
+name: Basic CI
+
+on:
+  push:
+  pull_request:
+
+steps:
+  - name: test
+    image: golang:1.22
+    commands:
+      - go test ./...

@@ -14,7 +14,7 @@ func TestLoad_Defaults(t *testing.T) {
 	// Clear all env vars
 	clearEnv()
 
-	cfg, err := Load()
+	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -52,7 +52,7 @@ func TestLoad_FromEnv(t *testing.T) {
 	os.Setenv("FEATHERCI_GITHUB_CLIENT_ID", "gh-client-id")
 	os.Setenv("FEATHERCI_GITHUB_CLIENT_SECRET", "gh-client-secret")
 
-	cfg, err := Load()
+	cfg, err := Load("")
 	if err != nil {
 		t.Fatalf("Load() error = %v", err)
 	}
@@ -84,7 +84,7 @@ func TestLoad_InvalidBase64(t *testing.T) {
 	clearEnv()
 	os.Setenv("FEATHERCI_SECRET_KEY", "not-valid-base64!!!")
 
-	_, err := Load()
+	_, err := Load("")
 	if err == nil {
 		t.Error("Load() expected error for invalid base64, got nil")
 	}
@@ -383,6 +383,139 @@ func TestParseList(t *testing.T) {
 				t.Errorf("parseList(%q)[%d] = %q, want %q", tt.input, i, got[i], tt.want[i])
 			}
 		}
+	}
+}
+
+func TestLoad_FromYAMLFile(t *testing.T) {
+	clearEnv()
+
+	// Create a temp YAML config file
+	content := []byte(`
+bind_addr: ":9999"
+base_url: "https://yaml.example.com"
+mode: master
+database_path: /data/yaml.db
+secret_key: "` + validSecretKey + `"
+admins:
+  - yamluser1
+  - yamluser2
+worker_secret: yaml-worker-secret
+max_concurrent: 4
+cache_path: /data/yaml-cache
+workspace_path: /data/yaml-workspaces
+github:
+  client_id: yaml-gh-id
+  client_secret: yaml-gh-secret
+gitlab:
+  url: "https://gitlab.custom.com"
+  client_id: yaml-gl-id
+  client_secret: yaml-gl-secret
+gitea:
+  url: "https://gitea.custom.com"
+  client_id: yaml-gt-id
+  client_secret: yaml-gt-secret
+master_url: "https://master.yaml.com"
+`)
+
+	tmpFile := t.TempDir() + "/config.yaml"
+	if err := os.WriteFile(tmpFile, content, 0644); err != nil {
+		t.Fatalf("failed to write temp config: %v", err)
+	}
+
+	cfg, err := Load(tmpFile)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if cfg.BindAddr != ":9999" {
+		t.Errorf("BindAddr = %q, want %q", cfg.BindAddr, ":9999")
+	}
+	if cfg.BaseURL != "https://yaml.example.com" {
+		t.Errorf("BaseURL = %q, want %q", cfg.BaseURL, "https://yaml.example.com")
+	}
+	if cfg.Mode != ModeMaster {
+		t.Errorf("Mode = %q, want %q", cfg.Mode, ModeMaster)
+	}
+	if cfg.DatabasePath != "/data/yaml.db" {
+		t.Errorf("DatabasePath = %q, want %q", cfg.DatabasePath, "/data/yaml.db")
+	}
+	if len(cfg.Admins) != 2 || cfg.Admins[0] != "yamluser1" || cfg.Admins[1] != "yamluser2" {
+		t.Errorf("Admins = %v, want [yamluser1 yamluser2]", cfg.Admins)
+	}
+	if cfg.WorkerSecret != "yaml-worker-secret" {
+		t.Errorf("WorkerSecret = %q, want %q", cfg.WorkerSecret, "yaml-worker-secret")
+	}
+	if cfg.MaxConcurrent != 4 {
+		t.Errorf("MaxConcurrent = %d, want 4", cfg.MaxConcurrent)
+	}
+	if cfg.GitHubClientID != "yaml-gh-id" {
+		t.Errorf("GitHubClientID = %q, want %q", cfg.GitHubClientID, "yaml-gh-id")
+	}
+	if cfg.GitLabURL != "https://gitlab.custom.com" {
+		t.Errorf("GitLabURL = %q, want %q", cfg.GitLabURL, "https://gitlab.custom.com")
+	}
+	if cfg.GiteaURL != "https://gitea.custom.com" {
+		t.Errorf("GiteaURL = %q, want %q", cfg.GiteaURL, "https://gitea.custom.com")
+	}
+	if cfg.MasterURL != "https://master.yaml.com" {
+		t.Errorf("MasterURL = %q, want %q", cfg.MasterURL, "https://master.yaml.com")
+	}
+}
+
+func TestLoad_EnvOverridesYAML(t *testing.T) {
+	clearEnv()
+
+	// Create a YAML config
+	content := []byte(`
+bind_addr: ":9999"
+base_url: "https://yaml.example.com"
+mode: standalone
+github:
+  client_id: yaml-id
+  client_secret: yaml-secret
+`)
+	tmpFile := t.TempDir() + "/config.yaml"
+	if err := os.WriteFile(tmpFile, content, 0644); err != nil {
+		t.Fatalf("failed to write temp config: %v", err)
+	}
+
+	// Set env vars that should override YAML
+	os.Setenv("FEATHERCI_BIND_ADDR", ":7777")
+	os.Setenv("FEATHERCI_GITHUB_CLIENT_ID", "env-id")
+
+	cfg, err := Load(tmpFile)
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	// Env should win
+	if cfg.BindAddr != ":7777" {
+		t.Errorf("BindAddr = %q, want %q (env should override YAML)", cfg.BindAddr, ":7777")
+	}
+	if cfg.GitHubClientID != "env-id" {
+		t.Errorf("GitHubClientID = %q, want %q (env should override YAML)", cfg.GitHubClientID, "env-id")
+	}
+	// YAML should provide values not overridden
+	if cfg.BaseURL != "https://yaml.example.com" {
+		t.Errorf("BaseURL = %q, want %q (YAML value)", cfg.BaseURL, "https://yaml.example.com")
+	}
+	if cfg.GitHubClientSecret != "yaml-secret" {
+		t.Errorf("GitHubClientSecret = %q, want %q (YAML value)", cfg.GitHubClientSecret, "yaml-secret")
+	}
+}
+
+func TestLoad_MissingYAMLFile(t *testing.T) {
+	clearEnv()
+
+	// Passing a nonexistent file should fall through to defaults
+	cfg, err := Load("/nonexistent/path/config.yaml")
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	// Should have defaults
+	if cfg.BindAddr != ":8080" {
+		t.Errorf("BindAddr = %q, want default %q", cfg.BindAddr, ":8080")
 	}
 }
 

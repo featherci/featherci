@@ -6,7 +6,7 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -68,7 +68,7 @@ func (h *AuthHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// Generate and store state token for CSRF protection
 	state, err := generateStateToken()
 	if err != nil {
-		log.Printf("Failed to generate state token: %v", err)
+		slog.Error("failed to generate state token", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -106,7 +106,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Check for error from provider
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 		errDesc := r.URL.Query().Get("error_description")
-		log.Printf("OAuth error from %s: %s - %s", providerName, errMsg, errDesc)
+		slog.Error("oauth error from provider", "provider", providerName, "error", errMsg, "description", errDesc)
 		http.Error(w, "Authentication failed: "+errMsg, http.StatusBadRequest)
 		return
 	}
@@ -120,7 +120,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := provider.Exchange(r.Context(), code)
 	if err != nil {
-		log.Printf("Failed to exchange code with %s: %v", providerName, err)
+		slog.Error("failed to exchange code", "provider", providerName, "error", err)
 		http.Error(w, "Failed to authenticate", http.StatusInternalServerError)
 		return
 	}
@@ -128,7 +128,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Get user info from provider
 	userInfo, err := provider.GetUser(r.Context(), token)
 	if err != nil {
-		log.Printf("Failed to get user info from %s: %v", providerName, err)
+		slog.Error("failed to get user info", "provider", providerName, "error", err)
 		http.Error(w, "Failed to get user info", http.StatusInternalServerError)
 		return
 	}
@@ -136,7 +136,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Find or create user
 	user, err := h.findOrCreateUser(r, providerName, userInfo, token.AccessToken, token.RefreshToken)
 	if err != nil {
-		log.Printf("Failed to find or create user: %v", err)
+		slog.Error("failed to find or create user", "error", err)
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
@@ -144,7 +144,7 @@ func (h *AuthHandler) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// Create session
 	session, err := h.sessions.Create(r.Context(), user.ID)
 	if err != nil {
-		log.Printf("Failed to create session: %v", err)
+		slog.Error("failed to create session", "error", err)
 		http.Error(w, "Failed to create session", http.StatusInternalServerError)
 		return
 	}
@@ -167,7 +167,7 @@ func (h *AuthHandler) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	if err == nil {
 		// Delete the session from the store
 		if err := h.sessions.Delete(r.Context(), sessionID); err != nil {
-			log.Printf("Failed to delete session: %v", err)
+			slog.Error("failed to delete session", "error", err)
 		}
 	}
 
@@ -188,7 +188,7 @@ func (h *AuthHandler) HandleDevLogin(w http.ResponseWriter, r *http.Request) {
 	// Find or create a dev user
 	user, err := h.findOrCreateDevUser(r)
 	if err != nil {
-		log.Printf("Failed to create dev user: %v", err)
+		slog.Error("failed to create dev user", "error", err)
 		http.Error(w, "Failed to create dev user", http.StatusInternalServerError)
 		return
 	}
@@ -196,7 +196,7 @@ func (h *AuthHandler) HandleDevLogin(w http.ResponseWriter, r *http.Request) {
 	// Create session
 	session, err := h.sessions.Create(r.Context(), user.ID)
 	if err != nil {
-		log.Printf("Failed to create session: %v", err)
+		slog.Error("failed to create session", "error", err)
 		http.Error(w, "Failed to create session", http.StatusInternalServerError)
 		return
 	}

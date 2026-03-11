@@ -31,9 +31,9 @@ func (g *GitLabWebhook) CreateWebhook(ctx context.Context, token, repoFullName, 
 
 	payload := map[string]interface{}{
 		"url":                   webhookURL,
-		"push_events":          true,
+		"push_events":           true,
 		"merge_requests_events": true,
-		"token":                secret,
+		"token":                 secret,
 	}
 
 	body, err := json.Marshal(payload)

@@ -533,14 +533,23 @@
     </div>
   </section>
 
-  <!-- Quick Start Terminal -->
+  <!-- Quick Start -->
   <section class="py-20">
     <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div class="text-center mb-10">
         <h2 class="text-3xl font-bold text-gray-900 mb-4">Up and running in 30 seconds</h2>
-        <p class="text-lg text-gray-500">One command. That's it.</p>
+        <p class="text-lg text-gray-500">Install however you prefer.</p>
       </div>
-      <div class="bg-gray-900 rounded-xl p-6 sm:p-8 font-mono text-sm text-gray-300 overflow-x-auto border border-gray-700">
+
+      <!-- Install method tabs -->
+      <div class="flex gap-1 mb-0 bg-gray-100 rounded-t-xl p-1" role="tablist">
+        <button role="tab" aria-selected="true" data-tab="docker" class="install-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-white text-gray-900 shadow-sm">Docker</button>
+        <button role="tab" aria-selected="false" data-tab="homebrew" class="install-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700">Homebrew</button>
+        <button role="tab" aria-selected="false" data-tab="binary" class="install-tab flex-1 px-4 py-2 rounded-lg text-sm font-medium text-gray-500 hover:text-gray-700">Binary</button>
+      </div>
+
+      <!-- Docker tab -->
+      <div id="tab-docker" class="install-panel bg-gray-900 rounded-b-xl p-6 sm:p-8 font-mono text-sm text-gray-300 overflow-x-auto border border-gray-700 border-t-0">
         <div class="text-gray-500 mb-3 text-xs">$ terminal</div>
         <div class="whitespace-pre-wrap">docker run -d \
   -p 8080:8080 \
@@ -553,6 +562,61 @@
   -e FEATHERCI_GITHUB_CLIENT_SECRET=your_secret \
   featherci/featherci:latest</div>
       </div>
+
+      <!-- Homebrew tab -->
+      <div id="tab-homebrew" class="install-panel hidden bg-gray-900 rounded-b-xl p-6 sm:p-8 font-mono text-sm text-gray-300 overflow-x-auto border border-gray-700 border-t-0">
+        <div class="text-gray-500 mb-3 text-xs">$ terminal</div>
+        <div class="whitespace-pre-wrap">brew install featherci/tap/featherci
+
+<span class="text-gray-500"># Generate an encryption key</span>
+featherci --generate-key
+
+<span class="text-gray-500"># Set up your config file</span>
+mkdir -p $(brew --prefix)/etc/featherci
+cp $(brew --prefix)/share/featherci/config.yaml.example \
+   $(brew --prefix)/etc/featherci/config.yaml
+
+<span class="text-gray-500"># Edit config, then start</span>
+brew services start featherci</div>
+      </div>
+
+      <!-- Binary tab -->
+      <div id="tab-binary" class="install-panel hidden bg-gray-900 rounded-b-xl p-6 sm:p-8 font-mono text-sm text-gray-300 overflow-x-auto border border-gray-700 border-t-0">
+        <div class="text-gray-500 mb-3 text-xs">$ terminal</div>
+        <div class="whitespace-pre-wrap"><span class="text-gray-500"># One-line install script (Linux)</span>
+curl -sSL https://featherci.dev/install.sh | bash
+
+<span class="text-gray-500"># Or download the binary manually</span>
+curl -Lo featherci https://github.com/featherci/featherci/releases/latest/download/featherci-linux-amd64
+chmod +x featherci
+sudo mv featherci /usr/local/bin/
+
+<span class="text-gray-500"># Generate a key and create config</span>
+featherci --generate-key
+sudo mkdir -p /etc/featherci
+sudo cp config.yaml.example /etc/featherci/config.yaml
+
+<span class="text-gray-500"># Run it</span>
+featherci</div>
+      </div>
+
+      <!-- Tab switching script -->
+      <script>
+        document.querySelectorAll('.install-tab').forEach(function(tab) {
+          tab.addEventListener('click', function() {
+            document.querySelectorAll('.install-tab').forEach(function(t) {
+              t.classList.remove('bg-white', 'text-gray-900', 'shadow-sm');
+              t.classList.add('text-gray-500');
+              t.setAttribute('aria-selected', 'false');
+            });
+            tab.classList.add('bg-white', 'text-gray-900', 'shadow-sm');
+            tab.classList.remove('text-gray-500');
+            tab.setAttribute('aria-selected', 'true');
+            document.querySelectorAll('.install-panel').forEach(function(p) { p.classList.add('hidden'); });
+            document.getElementById('tab-' + tab.dataset.tab).classList.remove('hidden');
+          });
+        });
+      </script>
     </div>
   </section>
 

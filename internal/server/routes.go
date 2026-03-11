@@ -146,11 +146,24 @@ func (s *Server) setupRoutes() http.Handler {
 	mux.Handle("POST /admin/users/{id}/toggle-admin", s.authMiddleware.RequireAdmin(http.HandlerFunc(s.adminHandler.ToggleAdmin)))
 	mux.Handle("POST /admin/users/{id}/delete", s.authMiddleware.RequireAdmin(http.HandlerFunc(s.adminHandler.RemoveUser)))
 
-	// API routes for workers
-	// TODO: Implement worker API endpoints (job polling, status reporting, heartbeat)
-	mux.HandleFunc("GET /api/worker/jobs", s.handleNotImplemented)
-	mux.HandleFunc("POST /api/worker/jobs/{id}/status", s.handleNotImplemented)
-	mux.HandleFunc("POST /api/worker/heartbeat", s.handleNotImplemented)
+	// Worker API routes (master/standalone mode only, authenticated via worker secret)
+	if s.workerAPI != nil {
+		workerAuth := middleware.WorkerAuth(s.config.WorkerSecret)
+		mux.Handle("GET /api/worker/steps/ready", workerAuth(http.HandlerFunc(s.workerAPI.ListReadySteps)))
+		mux.Handle("POST /api/worker/steps/{id}/claim", workerAuth(http.HandlerFunc(s.workerAPI.ClaimStep)))
+		mux.Handle("POST /api/worker/steps/{id}/complete", workerAuth(http.HandlerFunc(s.workerAPI.CompleteStep)))
+		mux.Handle("POST /api/worker/steps/{id}/log", workerAuth(http.HandlerFunc(s.workerAPI.UploadLog)))
+		mux.Handle("GET /api/worker/builds/{id}", workerAuth(http.HandlerFunc(s.workerAPI.GetBuild)))
+		mux.Handle("GET /api/worker/builds/{id}/steps", workerAuth(http.HandlerFunc(s.workerAPI.ListBuildSteps)))
+		mux.Handle("POST /api/worker/builds/{id}/started", workerAuth(http.HandlerFunc(s.workerAPI.BuildStarted)))
+		mux.Handle("GET /api/worker/projects/{id}", workerAuth(http.HandlerFunc(s.workerAPI.GetProject)))
+		mux.Handle("GET /api/worker/projects/{id}/secrets", workerAuth(http.HandlerFunc(s.workerAPI.GetProjectSecrets)))
+		mux.Handle("GET /api/worker/projects/{id}/token", workerAuth(http.HandlerFunc(s.workerAPI.GetProjectToken)))
+		mux.Handle("POST /api/worker/register", workerAuth(http.HandlerFunc(s.workerAPI.Register)))
+		mux.Handle("POST /api/worker/heartbeat", workerAuth(http.HandlerFunc(s.workerAPI.Heartbeat)))
+		mux.Handle("POST /api/worker/status", workerAuth(http.HandlerFunc(s.workerAPI.UpdateStatus)))
+		mux.Handle("POST /api/worker/offline", workerAuth(http.HandlerFunc(s.workerAPI.SetOffline)))
+	}
 
 	// Webhooks (no auth, validated by signature)
 	mux.HandleFunc("POST /webhooks/github", s.webhookHandler.HandleGitHub)
@@ -301,11 +314,4 @@ func safeTime(t *time.Time) time.Time {
 		return time.Time{}
 	}
 	return *t
-}
-
-// handleNotImplemented returns a 501 Not Implemented response.
-func (s *Server) handleNotImplemented(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotImplemented)
-	json.NewEncoder(w).Encode(map[string]string{"error": "not implemented"})
 }

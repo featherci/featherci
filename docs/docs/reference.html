@@ -187,6 +187,7 @@
           <tbody>
             <tr><td><code>FEATHERCI_WORKER_SECRET</code></td><td>&mdash;</td><td><strong>Required for <code>master</code> and <code>worker</code> modes.</strong> Shared secret for worker authentication.</td></tr>
             <tr><td><code>FEATHERCI_MASTER_URL</code></td><td>&mdash;</td><td><strong>Required for <code>worker</code> mode.</strong> URL of the master instance.</td></tr>
+            <tr><td><code>FEATHERCI_MAX_CONCURRENT</code></td><td><code>2</code></td><td>Maximum number of build steps a worker runs in parallel.</td></tr>
           </tbody>
         </table>
 
@@ -374,13 +375,24 @@ POST /webhooks/gitea</code></pre>
 
         <h3>Worker API</h3>
 
-        <p>The worker API is used internally for distributed mode communication. These endpoints are authenticated with <code>FEATHERCI_WORKER_SECRET</code>.</p>
+        <p>The worker API is used internally for distributed mode communication. All endpoints require a <code>Bearer</code> token matching <code>FEATHERCI_WORKER_SECRET</code>.</p>
 
-        <pre><code>GET  /api/worker/jobs             # Poll for available jobs
-POST /api/worker/jobs/{id}/status  # Report job status
-POST /api/worker/heartbeat        # Worker heartbeat</code></pre>
+        <pre><code>GET  /api/worker/steps/ready            # Poll for ready steps
+POST /api/worker/steps/{id}/claim       # Claim a step (409 if taken)
+POST /api/worker/steps/{id}/complete    # Report step completion
+POST /api/worker/steps/{id}/log         # Upload step log file
+GET  /api/worker/builds/{id}            # Get build metadata
+GET  /api/worker/builds/{id}/steps      # List build steps
+POST /api/worker/builds/{id}/started    # Mark build started
+GET  /api/worker/projects/{id}          # Get project metadata
+GET  /api/worker/projects/{id}/secrets  # Get decrypted secrets
+GET  /api/worker/projects/{id}/token    # Get clone token
+POST /api/worker/register               # Register worker
+POST /api/worker/heartbeat              # Worker heartbeat
+POST /api/worker/status                 # Update worker status
+POST /api/worker/offline                # Set worker offline</code></pre>
 
-        <blockquote><p><strong>Warning:</strong> The worker API is internal and not yet stable. It may change between versions.</p></blockquote>
+        <blockquote><p><strong>Note:</strong> The worker API is internal. It may change between versions.</p></blockquote>
 
       </main>
     </div>

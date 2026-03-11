@@ -621,13 +621,28 @@ FEATHERCI_WORKER_SECRET=your-shared-secret</code></pre>
   -e FEATHERCI_WORKER_SECRET=your-shared-secret \
   featherci/featherci:latest</code></pre>
 
+        <h3>How It Works</h3>
+
+        <ol>
+          <li>Workers self-register with the master on startup</li>
+          <li>Workers poll for ready steps every 2 seconds</li>
+          <li>When a step is found, the worker claims it, clones the repo, injects secrets (fetched from master), and runs the step in Docker</li>
+          <li>On completion, the worker reports results; the master handles all state transitions (skipping dependents, unblocking ready steps, recalculating build status, sending notifications, posting commit statuses)</li>
+          <li>Workers send heartbeats every 15 seconds; the master resets steps from stale workers after 60 seconds</li>
+        </ol>
+
+        <h3>Scaling</h3>
+
+        <p>Add more workers to increase parallel build capacity. Each worker runs up to 2 steps concurrently by default (configurable via <code>FEATHERCI_MAX_CONCURRENT</code>). Multiple workers can process steps from the same build simultaneously.</p>
+
         <h3>Requirements</h3>
 
         <ul>
           <li>Workers must be able to reach the master URL over the network</li>
           <li>Workers must have Docker installed and accessible</li>
           <li>All instances must share the same <code>FEATHERCI_WORKER_SECRET</code></li>
-          <li>Workers do not need OAuth configuration or a database</li>
+          <li>Workers do not need OAuth configuration, a database, or a secret key</li>
+          <li>Workers need local disk space for workspaces and build cache</li>
         </ul>
 
       </main>

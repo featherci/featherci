@@ -18,8 +18,8 @@ import (
 	"github.com/featherci/featherci/internal/middleware"
 	"github.com/featherci/featherci/internal/models"
 	"github.com/featherci/featherci/internal/services"
-	"github.com/featherci/featherci/internal/templates"
 	"github.com/featherci/featherci/internal/status"
+	"github.com/featherci/featherci/internal/templates"
 	"github.com/featherci/featherci/internal/webhooks"
 	"github.com/featherci/featherci/internal/worker"
 	"github.com/featherci/featherci/internal/workflow"
@@ -27,24 +27,25 @@ import (
 
 // Server represents the FeatherCI HTTP server.
 type Server struct {
-	config         *config.Config
-	db             *database.DB
-	httpServer     *http.Server
-	logger         *slog.Logger
-	providers      *auth.Registry
-	users          models.UserRepository
-	sessions       models.SessionStore
-	projects       models.ProjectRepository
-	projectUsers   models.ProjectUserRepository
-	builds         models.BuildRepository
-	templates      *templates.Engine
-	authHandler    *handlers.AuthHandler
-	projectHandler *handlers.ProjectHandler
-	webhookHandler *handlers.WebhookHandler
-	buildHandler   *handlers.BuildHandler
+	config              *config.Config
+	db                  *database.DB
+	httpServer          *http.Server
+	logger              *slog.Logger
+	providers           *auth.Registry
+	users               models.UserRepository
+	sessions            models.SessionStore
+	projects            models.ProjectRepository
+	projectUsers        models.ProjectUserRepository
+	builds              models.BuildRepository
+	templates           *templates.Engine
+	authHandler         *handlers.AuthHandler
+	projectHandler      *handlers.ProjectHandler
+	webhookHandler      *handlers.WebhookHandler
+	buildHandler        *handlers.BuildHandler
 	secretHandler       *handlers.SecretHandler
 	notificationHandler *handlers.NotificationHandler
 	adminHandler        *handlers.AdminHandler
+	workerAPI           *handlers.WorkerAPIHandler
 	authMiddleware      *middleware.AuthMiddleware
 }
 
@@ -108,24 +109,36 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 	notificationHandler := handlers.NewNotificationHandler(notificationService, projects, projectUsers, tmpl, logger, cfg.DevMode)
 	adminHandler := handlers.NewAdminHandler(users, projects, builds, workers, tmpl, logger)
 
+	// Initialize worker API handler (for master and standalone modes)
+	var workerAPIHandler *handlers.WorkerAPIHandler
+	if cfg.WorkerSecret != "" && (cfg.Mode == config.ModeMaster || cfg.Mode == config.ModeStandalone) {
+		advancer := services.NewBuildAdvancer(steps, builds, projects, statusService, notificationService, logger)
+		workerAPIHandler = handlers.NewWorkerAPIHandler(
+			steps, builds, projects, workers,
+			secretService, tokenSource, statusService,
+			advancer, cfg.WorkspacePath, logger,
+		)
+	}
+
 	return &Server{
-		config:         cfg,
-		db:             db,
-		logger:         logger,
-		providers:      providers,
-		users:          users,
-		sessions:       sessions,
-		projects:       projects,
-		projectUsers:   projectUsers,
-		builds:         builds,
-		templates:      tmpl,
-		authHandler:    authHandler,
-		projectHandler: projectHandler,
-		webhookHandler: webhookHandler,
-		buildHandler:   buildHandler,
+		config:              cfg,
+		db:                  db,
+		logger:              logger,
+		providers:           providers,
+		users:               users,
+		sessions:            sessions,
+		projects:            projects,
+		projectUsers:        projectUsers,
+		builds:              builds,
+		templates:           tmpl,
+		authHandler:         authHandler,
+		projectHandler:      projectHandler,
+		webhookHandler:      webhookHandler,
+		buildHandler:        buildHandler,
 		secretHandler:       secretHandler,
 		notificationHandler: notificationHandler,
 		adminHandler:        adminHandler,
+		workerAPI:           workerAPIHandler,
 		authMiddleware:      authMiddleware,
 	}, nil
 }

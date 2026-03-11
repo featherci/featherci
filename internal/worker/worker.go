@@ -80,6 +80,22 @@ type buildNotifier interface {
 	NotifyBuild(ctx context.Context, build *models.Build, project *models.Project) error
 }
 
+// buildAdvancer handles post-step-completion state transitions on the master.
+type buildAdvancer interface {
+	AdvanceBuild(ctx context.Context, buildID int64) error
+}
+
+// logUploader uploads step log files (used in distributed mode to send logs to master).
+type logUploader interface {
+	UploadLog(ctx context.Context, stepID int64, logPath string) error
+}
+
+// NoopLogUploader is a no-op log uploader for standalone mode (logs are already local).
+type NoopLogUploader struct{}
+
+// UploadLog is a no-op.
+func (NoopLogUploader) UploadLog(context.Context, int64, string) error { return nil }
+
 // Config holds worker configuration.
 type Config struct {
 	PollInterval      time.Duration
@@ -111,6 +127,8 @@ type Worker struct {
 	runner    *executor.StepRunner
 	status    statusPoster
 	notifier  buildNotifier
+	advancer  buildAdvancer
+	logUpload logUploader
 	sem       chan struct{}
 	wg        sync.WaitGroup
 	logger    *slog.Logger
@@ -140,6 +158,8 @@ func New(
 	runner *executor.StepRunner,
 	status statusPoster,
 	notifier buildNotifier,
+	advancer buildAdvancer,
+	logUpload logUploader,
 	logger *slog.Logger,
 ) *Worker {
 	if logger == nil {
@@ -158,6 +178,8 @@ func New(
 		runner:    runner,
 		status:    status,
 		notifier:  notifier,
+		advancer:  advancer,
+		logUpload: logUpload,
 		sem:       make(chan struct{}, cfg.MaxConcurrent),
 		cloneOnce: make(map[int64]*cloneState),
 		logger:    logger,
@@ -374,6 +396,13 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 		log.Error("failed to set step finished", "error", err)
 	}
 
+	// Upload log file to master (no-op in standalone mode)
+	if w.logUpload != nil && result.LogPath != "" {
+		if err := w.logUpload.UploadLog(ctx, step.ID, result.LogPath); err != nil {
+			log.Error("failed to upload log", "error", err)
+		}
+	}
+
 	// Post step finished status
 	go w.status.PostStepStatus(context.Background(), project, build, step.Name, result.Status)
 
@@ -402,7 +431,19 @@ func (w *Worker) failStepWithContext(ctx context.Context, step *models.BuildStep
 }
 
 func (w *Worker) advanceBuild(ctx context.Context, buildID int64, log *slog.Logger) {
-	// Cascade skip any steps whose dependencies have failed
+	if w.advancer != nil {
+		if err := w.advancer.AdvanceBuild(ctx, buildID); err != nil {
+			log.Error("build advancement failed", "error", err)
+		}
+		// Cleanup clone state if build is now terminal
+		build, err := w.builds.GetByID(ctx, buildID)
+		if err == nil && build.IsTerminal() {
+			w.cleanupCloneOnce(buildID)
+		}
+		return
+	}
+
+	// Fallback: inline advancement (for backward compatibility)
 	for {
 		n, err := w.steps.SkipDependentSteps(ctx, buildID)
 		if err != nil {
@@ -413,7 +454,6 @@ func (w *Worker) advanceBuild(ctx context.Context, buildID int64, log *slog.Logg
 			break
 		}
 	}
-	// Unblock steps whose dependencies all succeeded
 	if _, err := w.steps.UpdateReadySteps(ctx, buildID); err != nil {
 		log.Error("failed to update ready steps", "error", err)
 	}
@@ -444,7 +484,6 @@ func (w *Worker) recalcBuildStatus(ctx context.Context, buildID int64, log *slog
 			}
 			// Send build notifications asynchronously
 			if w.notifier != nil {
-				// Reload build to get updated timestamps
 				updatedBuild, err := w.builds.GetByID(ctx, buildID)
 				if err != nil {
 					log.Error("failed to reload build for notification", "error", err)

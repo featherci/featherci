@@ -20,7 +20,12 @@
       "Bash(docker rmi:*)",
       "Bash(docker rm:*)",
       "Bash(go run:*)",
-      "Bash(which hugo:*)"
+      "Bash(which hugo:*)",
+      "Bash(grep \"^func Test\" /Users/andy/Developer/featherci/internal/services/*.go | sed 's/:func /: /' | sed 's/\\(t \\\\*testing.T\\).*//' | sort)",
+      "Bash(go tool:*)",
+      "Bash(gofmt -l . 2>&1)",
+      "Bash(gofmt -s -w internal/models/build_step.go internal/notify/slack.go internal/server/server.go internal/services/build_creator_test.go internal/templates/engine.go internal/webhooks/gitlab.go)",
+      "Bash(for pkg:*)"
     ]
   }
 }

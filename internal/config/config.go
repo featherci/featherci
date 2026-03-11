@@ -7,10 +7,50 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/joho/godotenv"
+	"gopkg.in/yaml.v3"
 )
+
+// Default config file search paths, checked in order.
+var defaultConfigPaths = []string{
+	"/etc/featherci/config.yaml",
+	"config.yaml",
+}
+
+// fileConfig is the YAML config file structure.
+type fileConfig struct {
+	BindAddr      string `yaml:"bind_addr"`
+	BaseURL       string `yaml:"base_url"`
+	Mode          string `yaml:"mode"`
+	DatabasePath  string `yaml:"database_path"`
+	SecretKey     string `yaml:"secret_key"`
+	Admins        []string `yaml:"admins"`
+	WorkerSecret  string `yaml:"worker_secret"`
+	MasterURL     string `yaml:"master_url"`
+	MaxConcurrent int    `yaml:"max_concurrent"`
+	CachePath     string `yaml:"cache_path"`
+	WorkspacePath string `yaml:"workspace_path"`
+
+	GitHub struct {
+		ClientID     string `yaml:"client_id"`
+		ClientSecret string `yaml:"client_secret"`
+	} `yaml:"github"`
+
+	GitLab struct {
+		URL          string `yaml:"url"`
+		ClientID     string `yaml:"client_id"`
+		ClientSecret string `yaml:"client_secret"`
+	} `yaml:"gitlab"`
+
+	Gitea struct {
+		URL          string `yaml:"url"`
+		ClientID     string `yaml:"client_id"`
+		ClientSecret string `yaml:"client_secret"`
+	} `yaml:"gitea"`
+}
 
 // Mode defines the operating mode of the FeatherCI instance.
 type Mode string
@@ -52,7 +92,8 @@ type Config struct {
 	GiteaClientSecret string
 
 	// Worker mode settings
-	MasterURL string // URL of master instance (required for worker mode)
+	MasterURL      string // URL of master instance (required for worker mode)
+	MaxConcurrent  int    // Max concurrent build steps per worker (default: 2)
 
 	// Cache
 	CachePath string // Directory for build cache
@@ -61,51 +102,56 @@ type Config struct {
 	WorkspacePath string // Directory for build workspaces
 }
 
-// Load reads configuration from .env file (if present) and environment variables.
-// Environment variables take precedence over .env file values.
-func Load() (*Config, error) {
+// Load reads configuration from a YAML config file, .env file, and environment variables.
+// Precedence (highest to lowest): environment variables > .env file > YAML config file > defaults.
+// If configPath is empty, the default search paths are checked.
+func Load(configPath string) (*Config, error) {
+	// Load YAML config file (lowest precedence, sets defaults before env)
+	fc := loadConfigFile(configPath)
+
 	// Load .env file if it exists (ignore error if file doesn't exist)
 	_ = godotenv.Load()
 
 	cfg := &Config{
 		// Server defaults
-		BindAddr: getEnv("FEATHERCI_BIND_ADDR", ":8080"),
-		BaseURL:  getEnv("FEATHERCI_BASE_URL", "http://localhost:8080"),
-		Mode:     Mode(getEnv("FEATHERCI_MODE", "standalone")),
+		BindAddr: getEnv("FEATHERCI_BIND_ADDR", firstNonEmpty(fc.BindAddr, ":8080")),
+		BaseURL:  getEnv("FEATHERCI_BASE_URL", firstNonEmpty(fc.BaseURL, "http://localhost:8080")),
+		Mode:     Mode(getEnv("FEATHERCI_MODE", firstNonEmpty(fc.Mode, "standalone"))),
 
 		// Database default
-		DatabasePath: getEnv("FEATHERCI_DATABASE_PATH", "./featherci.db"),
+		DatabasePath: getEnv("FEATHERCI_DATABASE_PATH", firstNonEmpty(fc.DatabasePath, "./featherci.db")),
 
 		// Security
-		Admins:       parseList(getEnv("FEATHERCI_ADMINS", "")),
-		WorkerSecret: getEnv("FEATHERCI_WORKER_SECRET", ""),
+		Admins:       envOrYAMLList("FEATHERCI_ADMINS", fc.Admins),
+		WorkerSecret: getEnv("FEATHERCI_WORKER_SECRET", fc.WorkerSecret),
 
 		// GitHub OAuth
-		GitHubClientID:     getEnv("FEATHERCI_GITHUB_CLIENT_ID", ""),
-		GitHubClientSecret: getEnv("FEATHERCI_GITHUB_CLIENT_SECRET", ""),
+		GitHubClientID:     getEnv("FEATHERCI_GITHUB_CLIENT_ID", fc.GitHub.ClientID),
+		GitHubClientSecret: getEnv("FEATHERCI_GITHUB_CLIENT_SECRET", fc.GitHub.ClientSecret),
 
 		// GitLab OAuth
-		GitLabURL:          getEnv("FEATHERCI_GITLAB_URL", "https://gitlab.com"),
-		GitLabClientID:     getEnv("FEATHERCI_GITLAB_CLIENT_ID", ""),
-		GitLabClientSecret: getEnv("FEATHERCI_GITLAB_CLIENT_SECRET", ""),
+		GitLabURL:          getEnv("FEATHERCI_GITLAB_URL", firstNonEmpty(fc.GitLab.URL, "https://gitlab.com")),
+		GitLabClientID:     getEnv("FEATHERCI_GITLAB_CLIENT_ID", fc.GitLab.ClientID),
+		GitLabClientSecret: getEnv("FEATHERCI_GITLAB_CLIENT_SECRET", fc.GitLab.ClientSecret),
 
 		// Gitea OAuth
-		GiteaURL:          getEnv("FEATHERCI_GITEA_URL", ""),
-		GiteaClientID:     getEnv("FEATHERCI_GITEA_CLIENT_ID", ""),
-		GiteaClientSecret: getEnv("FEATHERCI_GITEA_CLIENT_SECRET", ""),
+		GiteaURL:          getEnv("FEATHERCI_GITEA_URL", fc.Gitea.URL),
+		GiteaClientID:     getEnv("FEATHERCI_GITEA_CLIENT_ID", fc.Gitea.ClientID),
+		GiteaClientSecret: getEnv("FEATHERCI_GITEA_CLIENT_SECRET", fc.Gitea.ClientSecret),
 
 		// Worker mode
-		MasterURL: getEnv("FEATHERCI_MASTER_URL", ""),
+		MasterURL:     getEnv("FEATHERCI_MASTER_URL", fc.MasterURL),
+		MaxConcurrent: getEnvInt("FEATHERCI_MAX_CONCURRENT", firstNonZero(fc.MaxConcurrent, 2)),
 
 		// Cache
-		CachePath: getEnv("FEATHERCI_CACHE_PATH", "./cache"),
+		CachePath: getEnv("FEATHERCI_CACHE_PATH", firstNonEmpty(fc.CachePath, "./cache")),
 
 		// Workspaces
-		WorkspacePath: getEnv("FEATHERCI_WORKSPACE_PATH", "./workspaces"),
+		WorkspacePath: getEnv("FEATHERCI_WORKSPACE_PATH", firstNonEmpty(fc.WorkspacePath, "./workspaces")),
 	}
 
-	// Decode base64 secret key
-	secretKeyB64 := getEnv("FEATHERCI_SECRET_KEY", "")
+	// Decode base64 secret key (env var takes precedence over YAML)
+	secretKeyB64 := getEnv("FEATHERCI_SECRET_KEY", fc.SecretKey)
 	if secretKeyB64 != "" {
 		key, err := base64.StdEncoding.DecodeString(secretKeyB64)
 		if err != nil {
@@ -115,6 +161,72 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// loadConfigFile reads a YAML config file. If path is empty, default locations are searched.
+// Returns a zero-value fileConfig if no file is found.
+func loadConfigFile(path string) fileConfig {
+	var fc fileConfig
+
+	if path != "" {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return fc
+		}
+		_ = yaml.Unmarshal(data, &fc)
+		return fc
+	}
+
+	// Check FEATHERCI_CONFIG env var
+	if envPath := os.Getenv("FEATHERCI_CONFIG"); envPath != "" {
+		data, err := os.ReadFile(envPath)
+		if err != nil {
+			return fc
+		}
+		_ = yaml.Unmarshal(data, &fc)
+		return fc
+	}
+
+	// Search default paths
+	for _, p := range defaultConfigPaths {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		_ = yaml.Unmarshal(data, &fc)
+		return fc
+	}
+
+	return fc
+}
+
+// envOrYAMLList returns the env var parsed as a comma-separated list,
+// or falls back to the YAML list value.
+func envOrYAMLList(envKey string, yamlVal []string) []string {
+	if v := os.Getenv(envKey); v != "" {
+		return parseList(v)
+	}
+	return yamlVal
+}
+
+// firstNonEmpty returns the first non-empty string.
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// firstNonZero returns the first non-zero int.
+func firstNonZero(values ...int) int {
+	for _, v := range values {
+		if v != 0 {
+			return v
+		}
+	}
+	return 0
 }
 
 // Validate checks that the configuration is valid and complete.
@@ -127,18 +239,21 @@ func (c *Config) Validate() error {
 		c.SecretKey = []byte("featherci-dev-key-do-not-use!!__")
 	}
 
-	// Validate secret key
-	if len(c.SecretKey) == 0 {
-		errs = append(errs, "FEATHERCI_SECRET_KEY is required (generate with: featherci --generate-key)")
-	} else if len(c.SecretKey) != 32 {
-		errs = append(errs, fmt.Sprintf("FEATHERCI_SECRET_KEY must be 32 bytes, got %d", len(c.SecretKey)))
-	}
+	// Worker mode doesn't need secret key, base URL, or OAuth
+	if c.Mode != ModeWorker {
+		// Validate secret key
+		if len(c.SecretKey) == 0 {
+			errs = append(errs, "FEATHERCI_SECRET_KEY is required (generate with: featherci --generate-key)")
+		} else if len(c.SecretKey) != 32 {
+			errs = append(errs, fmt.Sprintf("FEATHERCI_SECRET_KEY must be 32 bytes, got %d", len(c.SecretKey)))
+		}
 
-	// Validate base URL
-	if c.BaseURL == "" {
-		errs = append(errs, "FEATHERCI_BASE_URL is required")
-	} else if _, err := url.Parse(c.BaseURL); err != nil {
-		errs = append(errs, fmt.Sprintf("FEATHERCI_BASE_URL is invalid: %v", err))
+		// Validate base URL
+		if c.BaseURL == "" {
+			errs = append(errs, "FEATHERCI_BASE_URL is required")
+		} else if _, err := url.Parse(c.BaseURL); err != nil {
+			errs = append(errs, fmt.Sprintf("FEATHERCI_BASE_URL is invalid: %v", err))
+		}
 	}
 
 	// Validate mode
@@ -168,8 +283,8 @@ func (c *Config) Validate() error {
 		}
 	}
 
-	// Skip OAuth and admin validation in dev mode
-	if !c.DevMode {
+	// Skip OAuth and admin validation in dev mode or worker mode
+	if !c.DevMode && c.Mode != ModeWorker {
 		// Require at least one OAuth provider
 		if !c.HasGitHubAuth() && !c.HasGitLabAuth() && !c.HasGiteaAuth() {
 			errs = append(errs, "at least one OAuth provider must be configured (GitHub, GitLab, or Gitea)")
@@ -248,6 +363,16 @@ func (c *Config) IsAdmin(username string) bool {
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+// getEnvInt returns the environment variable as an int, or the default if not set or invalid.
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		if n, err := strconv.Atoi(value); err == nil && n > 0 {
+			return n
+		}
 	}
 	return defaultValue
 }

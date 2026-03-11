@@ -11,7 +11,7 @@ import (
 
 // mockBuildRepo implements BuildRepository for testing.
 type mockBuildRepo struct {
-	builds      []*models.Build
+	builds       []*models.Build
 	nextBuildNum int
 }
 

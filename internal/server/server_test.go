@@ -225,20 +225,47 @@ func TestDevLogin_DisabledInProduction(t *testing.T) {
 	}
 }
 
-func TestNotImplemented(t *testing.T) {
-	srv, db := setupTestServer(t)
+func TestWorkerAPIRequiresAuth(t *testing.T) {
+	// Create a server with WorkerSecret set to enable worker API routes
+	db, err := database.Open(":memory:")
+	if err != nil {
+		t.Fatalf("Failed to open database: %v", err)
+	}
 	defer db.Close()
+	if err := db.Migrate(); err != nil {
+		t.Fatalf("Failed to migrate database: %v", err)
+	}
+	cfg := &config.Config{
+		BaseURL:      "http://localhost:8080",
+		BindAddr:     ":8080",
+		SecretKey:    []byte("featherci-dev-key-do-not-use!!__"),
+		DevMode:      true,
+		WorkerSecret: "test-secret",
+		Mode:         config.ModeStandalone,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelError}))
+	srv, err := New(cfg, db, logger)
+	if err != nil {
+		t.Fatalf("Failed to create server: %v", err)
+	}
 
 	router := srv.setupRoutes()
 
-	// Test an unimplemented API route
-	req := httptest.NewRequest(http.MethodGet, "/api/worker/jobs", nil)
+	// Request without auth should be rejected
+	req := httptest.NewRequest(http.MethodGet, "/api/worker/steps/ready", nil)
 	rec := httptest.NewRecorder()
-
 	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("worker API without auth status = %d, want %d", rec.Code, http.StatusUnauthorized)
+	}
 
-	if rec.Code != http.StatusNotImplemented {
-		t.Errorf("unimplemented route status = %d, want %d", rec.Code, http.StatusNotImplemented)
+	// Request with correct auth should succeed
+	req = httptest.NewRequest(http.MethodGet, "/api/worker/steps/ready", nil)
+	req.Header.Set("Authorization", "Bearer test-secret")
+	rec = httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Errorf("worker API with auth status = %d, want %d", rec.Code, http.StatusOK)
 	}
 }
 

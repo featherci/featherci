@@ -227,6 +227,12 @@ type cleanStep struct {
 	ContinueOnError bool              `yaml:"continue_on_error,omitempty"`
 	Cache           *cleanCache       `yaml:"cache,omitempty"`
 	Secrets         []string          `yaml:"secrets,omitempty"`
+	Services        []cleanService    `yaml:"services,omitempty"`
+}
+
+type cleanService struct {
+	Image string            `yaml:"image"`
+	Env   map[string]string `yaml:"env,omitempty"`
 }
 
 type cleanCache struct {
@@ -291,6 +297,12 @@ func marshalClean(wf *workflow.Workflow) ([]byte, error) {
 				Key:   s.Cache.Key,
 				Paths: s.Cache.Paths,
 			}
+		}
+		for _, svc := range s.Services {
+			cs.Services = append(cs.Services, cleanService{
+				Image: svc.Image,
+				Env:   svc.Env,
+			})
 		}
 		cw.Steps = append(cw.Steps, cs)
 	}

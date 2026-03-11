@@ -248,6 +248,26 @@ steps:
 
         <p>Values must be quoted with double quotes.</p>
 
+        <h3>Service Containers</h3>
+
+        <p>Run sidecar containers (databases, caches, etc.) alongside your step. Services are accessible by hostname on a shared Docker network.</p>
+
+        <pre><code>- name: integration-test
+  image: ruby:3.4
+  services:
+    - image: mysql:8.0
+      env:
+        MYSQL_ROOT_PASSWORD: test
+        MYSQL_DATABASE: app_test
+    - image: redis:7
+  env:
+    DATABASE_URL: mysql2://root:test@mysql/app_test
+    REDIS_URL: redis://redis:6379
+  commands:
+    - bundle exec rspec spec/integration</code></pre>
+
+        <p>The hostname is derived from the image name: <code>mysql:8.0</code> &rarr; <code>mysql</code>, <code>redis:7</code> &rarr; <code>redis</code>. Services are started before the step and cleaned up automatically after it completes.</p>
+
         <h3>Full Example</h3>
 
         <pre><code>name: Production Pipeline
@@ -613,6 +633,9 @@ featherci convert</code></pre>
             <tr><td>Environment variables</td><td>Global and job-level <code>env</code></td><td><code>environment</code> and Docker env</td></tr>
             <tr><td>Timeouts</td><td><code>timeout-minutes</code></td><td>&mdash;</td></tr>
             <tr><td>Continue on error</td><td><code>continue-on-error</code></td><td>&mdash;</td></tr>
+            <tr><td>Service containers</td><td>&mdash;</td><td><code>docker[1:]</code> &rarr; <code>services</code></td></tr>
+            <tr><td>Custom commands</td><td>&mdash;</td><td>Inlined with shell equivalents</td></tr>
+            <tr><td>Common orbs</td><td>&mdash;</td><td>Expanded to shell commands (ruby, node, python, go)</td></tr>
           </tbody>
         </table>
 
@@ -625,13 +648,12 @@ featherci convert</code></pre>
           <li><code>uses:</code> actions &mdash; replace with equivalent shell commands</li>
           <li><code>runs-on:</code> without <code>container</code> &mdash; choose an appropriate Docker image</li>
           <li>Build matrices (<code>strategy.matrix</code>) &mdash; create separate steps for each variant</li>
-          <li>Service containers &mdash; use Docker Compose in your commands instead</li>
           <li>Artifacts, permissions, concurrency, reusable workflows</li>
         </ul>
 
         <p><strong>CircleCI:</strong></p>
         <ul>
-          <li>Orbs &mdash; replace with equivalent shell commands</li>
+          <li>Uncommon orbs &mdash; replace with equivalent shell commands (common orbs like ruby, node, python, go are auto-expanded)</li>
           <li>Machine and macOS executors &mdash; FeatherCI uses Linux Docker containers only</li>
           <li><code>persist_to_workspace</code> / <code>attach_workspace</code> &mdash; use caching or restructure your pipeline</li>
           <li><code>store_artifacts</code> / <code>store_test_results</code></li>

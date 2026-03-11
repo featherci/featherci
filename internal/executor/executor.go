@@ -44,6 +44,14 @@ type RunOptions struct {
 	CPUs       float64 // 0 = unlimited
 	Timeout    time.Duration
 	Output     io.Writer // container stdout/stderr are streamed here during execution
+	Services   []ServiceOption
+}
+
+// ServiceOption configures a sidecar container to run alongside the main step container.
+// The service is accessible from the main container via its hostname (derived from the image name).
+type ServiceOption struct {
+	Image string
+	Env   map[string]string
 }
 
 // BindMount maps a host path into the container.

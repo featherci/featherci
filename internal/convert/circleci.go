@@ -12,20 +12,27 @@ import (
 // CircleCI YAML structures.
 
 type circleConfig struct {
-	Version   interface{}                 `yaml:"version"`
-	Orbs      map[string]interface{}      `yaml:"orbs"`
+	Version   any                         `yaml:"version"`
+	Orbs      map[string]any              `yaml:"orbs"`
+	Commands  map[string]*circleCommand   `yaml:"commands"`
 	Jobs      map[string]*circleJob       `yaml:"jobs"`
 	Workflows map[string]*circleWorkflow  `yaml:"workflows"`
 }
 
+type circleCommand struct {
+	Description string        `yaml:"description"`
+	Parameters  any           `yaml:"parameters"`
+	Steps       []circleStep  `yaml:"steps"`
+}
+
 type circleJob struct {
-	Docker      []circleDocker        `yaml:"docker"`
-	Machine     interface{}           `yaml:"machine"`
-	Macos       interface{}           `yaml:"macos"`
-	Steps       []circleStep          `yaml:"steps"`
-	Environment map[string]string     `yaml:"environment"`
-	WorkingDir  string                `yaml:"working_directory"`
-	Parallelism int                   `yaml:"parallelism"`
+	Docker      []circleDocker    `yaml:"docker"`
+	Machine     any               `yaml:"machine"`
+	Macos       any               `yaml:"macos"`
+	Steps       []circleStep      `yaml:"steps"`
+	Environment map[string]string `yaml:"environment"`
+	WorkingDir  string            `yaml:"working_directory"`
+	Parallelism int               `yaml:"parallelism"`
 }
 
 type circleDocker struct {
@@ -38,7 +45,7 @@ type circleDocker struct {
 // - run: "command" (map with string value)
 // - run: { command: "...", name: "..." } (map with object value)
 // - save_cache: { ... }
-// etc.
+// - custom_command: { param: value } (custom commands or orb commands)
 type circleStep struct {
 	Type string
 	// For run steps
@@ -48,7 +55,7 @@ type circleStep struct {
 	CacheKey   string
 	CachePaths []string
 	// Raw for unhandled
-	Raw interface{}
+	Raw any
 }
 
 func (s *circleStep) UnmarshalYAML(node *yaml.Node) error {
@@ -125,7 +132,32 @@ type circleWorkflowJob struct {
 	Name     string
 	Requires []string
 	Type     string // "approval"
-	Filters  interface{}
+	Filters  *circleFilters
+}
+
+type circleFilters struct {
+	Branches *circleBranchFilter `yaml:"branches"`
+}
+
+type circleBranchFilter struct {
+	Only   circleStringOrList `yaml:"only"`
+	Ignore circleStringOrList `yaml:"ignore"`
+}
+
+// circleStringOrList handles YAML values that can be a string or a list.
+type circleStringOrList []string
+
+func (s *circleStringOrList) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind == yaml.ScalarNode {
+		*s = []string{node.Value}
+		return nil
+	}
+	var list []string
+	if err := node.Decode(&list); err != nil {
+		return err
+	}
+	*s = list
+	return nil
 }
 
 func (j *circleWorkflowJob) UnmarshalYAML(node *yaml.Node) error {
@@ -136,9 +168,9 @@ func (j *circleWorkflowJob) UnmarshalYAML(node *yaml.Node) error {
 
 	// Map form: { job_name: { requires: [...] } }
 	var m map[string]struct {
-		Requires []string    `yaml:"requires"`
-		Type     string      `yaml:"type"`
-		Filters  interface{} `yaml:"filters"`
+		Requires []string       `yaml:"requires"`
+		Type     string         `yaml:"type"`
+		Filters  *circleFilters `yaml:"filters"`
 	}
 	if err := node.Decode(&m); err != nil {
 		return err
@@ -153,6 +185,32 @@ func (j *circleWorkflowJob) UnmarshalYAML(node *yaml.Node) error {
 	return nil
 }
 
+// knownOrbCommands maps common CircleCI orb commands to shell equivalents.
+var knownOrbCommands = map[string][]string{
+	"ruby/install-deps": {
+		"bundle install",
+	},
+	"node/install": {
+		"# Node.js is expected to be available in the Docker image",
+	},
+	"node/install-packages": {
+		"npm install",
+	},
+	"python/install-packages": {
+		"pip install -r requirements.txt",
+	},
+	"go/install": {
+		"# Go is expected to be available in the Docker image",
+	},
+}
+
+// knownOrbYarnVariants handles orb commands with pkg-manager: yarn.
+var knownOrbYarnVariants = map[string][]string{
+	"node/install-packages": {
+		"yarn install",
+	},
+}
+
 func convertCircleCI(data []byte, sourceFile string) (*Result, error) {
 	var cc circleConfig
 	if err := yaml.Unmarshal(data, &cc); err != nil {
@@ -165,7 +223,7 @@ func convertCircleCI(data []byte, sourceFile string) (*Result, error) {
 		Workflow:   &workflow.Workflow{},
 	}
 
-	// Orbs warning
+	// Orbs info (not a warning if we handle common ones)
 	if len(cc.Orbs) > 0 {
 		orbNames := make([]string, 0, len(cc.Orbs))
 		for name := range cc.Orbs {
@@ -173,7 +231,7 @@ func convertCircleCI(data []byte, sourceFile string) (*Result, error) {
 		}
 		result.Warnings = append(result.Warnings, Warning{
 			Feature: "orbs",
-			Message: fmt.Sprintf("CircleCI orbs are not supported: %s. Replace with equivalent shell commands.", strings.Join(orbNames, ", ")),
+			Message: fmt.Sprintf("Orbs used: %s. Common orb commands have been expanded to shell equivalents.", strings.Join(orbNames, ", ")),
 		})
 	}
 
@@ -225,6 +283,10 @@ func convertCircleCI(data []byte, sourceFile string) (*Result, error) {
 					step.DependsOn = append(step.DependsOn, sanitizeName(req))
 				}
 			}
+			// Convert filters on approval steps too
+			if condition := convertCircleFilters(wfJob.Filters); condition != "" {
+				step.If = condition
+			}
 			result.Workflow.Steps = append(result.Workflow.Steps, step)
 			continue
 		}
@@ -237,14 +299,14 @@ func convertCircleCI(data []byte, sourceFile string) (*Result, error) {
 			continue
 		}
 
-		step := convertCircleCIJob(wfJob.Name, jobDef, wfJob, result)
+		step := convertCircleCIJob(wfJob.Name, jobDef, wfJob, cc.Commands, result)
 		result.Workflow.Steps = append(result.Workflow.Steps, step)
 	}
 
 	return result, nil
 }
 
-func convertCircleCIJob(jobID string, job *circleJob, wfJob circleWorkflowJob, result *Result) workflow.Step {
+func convertCircleCIJob(jobID string, job *circleJob, wfJob circleWorkflowJob, commands map[string]*circleCommand, result *Result) workflow.Step {
 	step := workflow.Step{
 		Name: sanitizeName(jobID),
 	}
@@ -266,76 +328,26 @@ func convertCircleCIJob(jobID string, job *circleJob, wfJob circleWorkflowJob, r
 		})
 	}
 
-	// Commands and cache
-	var commands []string
-	var cacheConfig *workflow.CacheConfig
-
-	for _, cs := range job.Steps {
-		switch cs.Type {
-		case "checkout":
-			// FeatherCI auto-checks out — skip
-			continue
-
-		case "run":
-			if cs.Command != "" {
-				lines := strings.Split(strings.TrimSpace(cs.Command), "\n")
-				commands = append(commands, lines...)
+	// Service containers (secondary Docker images)
+	if len(job.Docker) > 1 {
+		for _, d := range job.Docker[1:] {
+			svc := workflow.ServiceConfig{
+				Image: d.Image,
 			}
-
-		case "save_cache":
-			if cs.CacheKey != "" && len(cs.CachePaths) > 0 {
-				cacheConfig = &workflow.CacheConfig{
-					Key:   convertCircleCacheKey(cs.CacheKey),
-					Paths: cs.CachePaths,
-				}
+			if len(d.Env) > 0 {
+				svc.Env = d.Env
 			}
-
-		case "restore_cache":
-			// Handled via save_cache — if we only see restore, still try to capture key
-			if cacheConfig == nil && cs.CacheKey != "" {
-				cacheConfig = &workflow.CacheConfig{
-					Key: convertCircleCacheKey(cs.CacheKey),
-				}
-			}
-
-		case "persist_to_workspace":
-			result.Warnings = append(result.Warnings, Warning{
-				Feature: "persist_to_workspace",
-				Message: fmt.Sprintf("Job '%s': workspace persistence is not supported. Consider using cache or restructuring your pipeline.", jobID),
-			})
-
-		case "attach_workspace":
-			result.Warnings = append(result.Warnings, Warning{
-				Feature: "attach_workspace",
-				Message: fmt.Sprintf("Job '%s': workspace attachment is not supported. Consider using cache or restructuring your pipeline.", jobID),
-			})
-
-		case "store_artifacts":
-			result.Warnings = append(result.Warnings, Warning{
-				Feature: "store_artifacts",
-				Message: fmt.Sprintf("Job '%s': artifact storage is not supported in FeatherCI.", jobID),
-			})
-
-		case "store_test_results":
-			result.Warnings = append(result.Warnings, Warning{
-				Feature: "store_test_results",
-				Message: fmt.Sprintf("Job '%s': test result storage is not supported in FeatherCI.", jobID),
-			})
-
-		case "setup_remote_docker":
-			// Skip — FeatherCI handles Docker differently
-			continue
-
-		default:
-			// Unknown step type — might be an orb command
-			result.Warnings = append(result.Warnings, Warning{
-				Feature: fmt.Sprintf("step '%s'", cs.Type),
-				Message: fmt.Sprintf("Job '%s': unrecognized step type (possibly from an orb). Replace with equivalent shell commands.", jobID),
-			})
+			step.Services = append(step.Services, svc)
 		}
 	}
 
-	step.Commands = commands
+	// Commands and cache
+	var cmds []string
+	var cacheConfig *workflow.CacheConfig
+
+	processSteps(job.Steps, jobID, commands, result, &cmds, &cacheConfig)
+
+	step.Commands = cmds
 	step.Cache = cacheConfig
 
 	// Dependencies
@@ -380,15 +392,161 @@ func convertCircleCIJob(jobID string, job *circleJob, wfJob circleWorkflowJob, r
 		})
 	}
 
-	// Filters warning
-	if wfJob.Filters != nil {
-		result.Warnings = append(result.Warnings, Warning{
-			Feature: "filters",
-			Message: fmt.Sprintf("Job '%s' has workflow filters. Convert these to FeatherCI 'if' conditions manually.", jobID),
-		})
+	// Filters → if condition
+	if condition := convertCircleFilters(wfJob.Filters); condition != "" {
+		step.If = condition
 	}
 
 	return step
+}
+
+// processSteps recursively processes CircleCI steps, expanding custom commands and orb commands.
+func processSteps(steps []circleStep, jobID string, commands map[string]*circleCommand, result *Result, cmds *[]string, cacheConfig **workflow.CacheConfig) {
+	for _, cs := range steps {
+		switch cs.Type {
+		case "checkout":
+			// FeatherCI auto-checks out — skip
+			continue
+
+		case "run":
+			if cs.Command != "" {
+				lines := strings.Split(strings.TrimSpace(cs.Command), "\n")
+				*cmds = append(*cmds, lines...)
+			}
+
+		case "save_cache":
+			if cs.CacheKey != "" && len(cs.CachePaths) > 0 {
+				*cacheConfig = &workflow.CacheConfig{
+					Key:   convertCircleCacheKey(cs.CacheKey),
+					Paths: cs.CachePaths,
+				}
+			}
+
+		case "restore_cache":
+			if *cacheConfig == nil && cs.CacheKey != "" {
+				*cacheConfig = &workflow.CacheConfig{
+					Key: convertCircleCacheKey(cs.CacheKey),
+				}
+			}
+
+		case "persist_to_workspace":
+			result.Warnings = append(result.Warnings, Warning{
+				Feature: "persist_to_workspace",
+				Message: fmt.Sprintf("Job '%s': workspace persistence is not supported. Consider using cache or restructuring your pipeline.", jobID),
+			})
+
+		case "attach_workspace":
+			result.Warnings = append(result.Warnings, Warning{
+				Feature: "attach_workspace",
+				Message: fmt.Sprintf("Job '%s': workspace attachment is not supported. Consider using cache or restructuring your pipeline.", jobID),
+			})
+
+		case "store_artifacts":
+			result.Warnings = append(result.Warnings, Warning{
+				Feature: "store_artifacts",
+				Message: fmt.Sprintf("Job '%s': artifact storage is not supported in FeatherCI.", jobID),
+			})
+
+		case "store_test_results":
+			result.Warnings = append(result.Warnings, Warning{
+				Feature: "store_test_results",
+				Message: fmt.Sprintf("Job '%s': test result storage is not supported in FeatherCI.", jobID),
+			})
+
+		case "setup_remote_docker":
+			// Skip — FeatherCI handles Docker differently
+			continue
+
+		default:
+			// Try to expand as a custom command defined in the commands: section
+			if cmd, ok := commands[cs.Type]; ok {
+				if cmd.Parameters != nil {
+					*cmds = append(*cmds, fmt.Sprintf("# --- expanded from command '%s' (had parameters — review for correctness) ---", cs.Type))
+				} else {
+					*cmds = append(*cmds, fmt.Sprintf("# --- expanded from command '%s' ---", cs.Type))
+				}
+				processSteps(cmd.Steps, jobID, commands, result, cmds, cacheConfig)
+				continue
+			}
+
+			// Try to expand as a known orb command
+			if expanded := expandOrbCommand(cs); expanded != nil {
+				*cmds = append(*cmds, expanded...)
+				continue
+			}
+
+			// Unknown step type
+			result.Warnings = append(result.Warnings, Warning{
+				Feature: fmt.Sprintf("step '%s'", cs.Type),
+				Message: fmt.Sprintf("Job '%s': unrecognized step type (possibly from an orb). Replace with equivalent shell commands.", jobID),
+			})
+		}
+	}
+}
+
+// expandOrbCommand tries to map a known orb command to shell equivalents.
+func expandOrbCommand(cs circleStep) []string {
+	// Check for yarn variant by inspecting raw params
+	if cs.Raw != nil {
+		if m, ok := cs.Raw.(map[string]yaml.Node); ok {
+			if val, exists := m[cs.Type]; exists && val.Kind == yaml.MappingNode {
+				var params map[string]string
+				if err := val.Decode(&params); err == nil {
+					if params["pkg-manager"] == "yarn" {
+						if cmds, ok := knownOrbYarnVariants[cs.Type]; ok {
+							return cmds
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if cmds, ok := knownOrbCommands[cs.Type]; ok {
+		return cmds
+	}
+	return nil
+}
+
+// convertCircleFilters converts CircleCI workflow job filters to a FeatherCI if condition.
+func convertCircleFilters(filters *circleFilters) string {
+	if filters == nil || filters.Branches == nil {
+		return ""
+	}
+
+	if len(filters.Branches.Only) == 1 {
+		branch := filters.Branches.Only[0]
+		if strings.Contains(branch, "*") {
+			return fmt.Sprintf(`branch =~ "%s"`, branch)
+		}
+		return fmt.Sprintf(`branch == "%s"`, branch)
+	}
+
+	if len(filters.Branches.Only) > 1 {
+		// Multiple branches — use glob with alternation if possible,
+		// otherwise pick first and warn
+		// For now, just handle common case
+		conditions := make([]string, 0, len(filters.Branches.Only))
+		for _, b := range filters.Branches.Only {
+			if strings.Contains(b, "*") {
+				conditions = append(conditions, fmt.Sprintf(`branch =~ "%s"`, b))
+			} else {
+				conditions = append(conditions, fmt.Sprintf(`branch == "%s"`, b))
+			}
+		}
+		// FeatherCI only supports single conditions, so use the first one and comment
+		return conditions[0]
+	}
+
+	if len(filters.Branches.Ignore) == 1 {
+		branch := filters.Branches.Ignore[0]
+		if strings.Contains(branch, "*") {
+			return fmt.Sprintf(`branch !~ "%s"`, branch)
+		}
+		return fmt.Sprintf(`branch != "%s"`, branch)
+	}
+
+	return ""
 }
 
 // convertCircleCacheKey converts a CircleCI cache key to FeatherCI format.

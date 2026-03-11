@@ -85,6 +85,15 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 	var output io.Writer = logWriter
 	output = NewMaskingWriter(output, secretValues)
 
+	// Convert service configs to executor options.
+	var services []ServiceOption
+	for _, svc := range step.Services {
+		services = append(services, ServiceOption{
+			Image: svc.Image,
+			Env:   svc.Env,
+		})
+	}
+
 	opts := RunOptions{
 		Image:    image,
 		Commands: step.Commands,
@@ -93,8 +102,9 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 		BindMounts: []BindMount{
 			{Source: workspacePath, Target: "/workspace"},
 		},
-		Timeout: timeout,
-		Output:  output,
+		Timeout:  timeout,
+		Output:   output,
+		Services: services,
 	}
 
 	result, runErr := r.executor.Run(ctx, opts)

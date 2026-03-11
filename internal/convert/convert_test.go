@@ -506,10 +506,244 @@ workflows:
 		"store_artifacts",
 		"persist_to_workspace",
 		"attach_workspace",
-		"filters",
 	} {
 		if !warnFeatures[expected] {
 			t.Errorf("expected warning for '%s'", expected)
+		}
+	}
+
+	// Filters should now be converted to an if condition, not a warning
+	var deployStep *workflow.Step
+	for i := range result.Workflow.Steps {
+		if result.Workflow.Steps[i].Name == "deploy" {
+			deployStep = &result.Workflow.Steps[i]
+			break
+		}
+	}
+	if deployStep == nil {
+		t.Fatal("expected 'deploy' step")
+	}
+	if deployStep.If != `branch == "main"` {
+		t.Errorf("expected if condition 'branch == \"main\"', got '%s'", deployStep.If)
+	}
+}
+
+func TestConvertCircleCI_CustomCommands(t *testing.T) {
+	input := `
+version: 2.1
+commands:
+  setup_creds:
+    description: "Write credentials"
+    steps:
+      - run:
+          name: Write creds
+          command: |
+            echo $TOKEN > config/token.key
+            chmod 600 config/token.key
+      - run:
+          name: SSH key
+          command: echo $SSH_KEY | base64 -d > ~/.ssh/id_ed25519
+
+  deploy_sequence:
+    description: "Deploy steps"
+    steps:
+      - run:
+          name: Migrate
+          command: ./bin/kamal app exec "rails db:migrate"
+      - run:
+          name: Deploy
+          command: ./bin/kamal deploy
+
+jobs:
+  deploy:
+    docker:
+      - image: ruby:3.2
+    steps:
+      - checkout
+      - setup_creds
+      - deploy_sequence
+
+workflows:
+  main:
+    jobs:
+      - deploy
+`
+
+	result, err := convertCircleCI([]byte(input), "config.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	step := result.Workflow.Steps[0]
+
+	// Should have inlined all commands from both custom commands
+	expectedCommands := []string{
+		"# --- expanded from command 'setup_creds' ---",
+		"echo $TOKEN > config/token.key",
+		"chmod 600 config/token.key",
+		"echo $SSH_KEY | base64 -d > ~/.ssh/id_ed25519",
+		"# --- expanded from command 'deploy_sequence' ---",
+		"./bin/kamal app exec \"rails db:migrate\"",
+		"./bin/kamal deploy",
+	}
+
+	if len(step.Commands) != len(expectedCommands) {
+		t.Fatalf("expected %d commands, got %d: %v", len(expectedCommands), len(step.Commands), step.Commands)
+	}
+
+	for i, expected := range expectedCommands {
+		if step.Commands[i] != expected {
+			t.Errorf("command[%d]: expected %q, got %q", i, expected, step.Commands[i])
+		}
+	}
+}
+
+func TestConvertCircleCI_OrbCommands(t *testing.T) {
+	input := `
+version: 2.1
+orbs:
+  ruby: circleci/ruby@2.5
+  node: circleci/node@7.1
+jobs:
+  test:
+    docker:
+      - image: cimg/ruby:3.4
+    steps:
+      - checkout
+      - ruby/install-deps
+      - node/install
+      - node/install-packages:
+          pkg-manager: yarn
+      - run: bundle exec rspec
+
+workflows:
+  main:
+    jobs:
+      - test
+`
+
+	result, err := convertCircleCI([]byte(input), "config.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	step := result.Workflow.Steps[0]
+
+	// Orb commands should be expanded to shell equivalents
+	found := map[string]bool{}
+	for _, cmd := range step.Commands {
+		found[cmd] = true
+	}
+
+	if !found["bundle install"] {
+		t.Error("expected 'bundle install' from ruby/install-deps expansion")
+	}
+	if !found["yarn install"] {
+		t.Error("expected 'yarn install' from node/install-packages with yarn")
+	}
+	if !found["bundle exec rspec"] {
+		t.Error("expected 'bundle exec rspec' from run step")
+	}
+
+	// Should NOT have warnings for the known orb commands
+	for _, w := range result.Warnings {
+		if w.Feature == "step 'ruby/install-deps'" || w.Feature == "step 'node/install'" || w.Feature == "step 'node/install-packages'" {
+			t.Errorf("should not warn about known orb command: %s", w.Feature)
+		}
+	}
+}
+
+func TestConvertCircleCI_Filters(t *testing.T) {
+	input := `
+version: 2.1
+jobs:
+  deploy:
+    docker:
+      - image: alpine
+    steps:
+      - run: echo deploy
+
+  staging:
+    docker:
+      - image: alpine
+    steps:
+      - run: echo staging
+
+workflows:
+  main:
+    jobs:
+      - deploy:
+          filters:
+            branches:
+              only: master
+      - staging:
+          filters:
+            branches:
+              ignore: main
+`
+
+	result, err := convertCircleCI([]byte(input), "config.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var deployStep, stagingStep *workflow.Step
+	for i := range result.Workflow.Steps {
+		switch result.Workflow.Steps[i].Name {
+		case "deploy":
+			deployStep = &result.Workflow.Steps[i]
+		case "staging":
+			stagingStep = &result.Workflow.Steps[i]
+		}
+	}
+
+	if deployStep == nil || deployStep.If != `branch == "master"` {
+		t.Errorf("deploy: expected if 'branch == \"master\"', got '%s'", deployStep.If)
+	}
+	if stagingStep == nil || stagingStep.If != `branch != "main"` {
+		t.Errorf("staging: expected if 'branch != \"main\"', got '%s'", stagingStep.If)
+	}
+}
+
+func TestConvertCircleCI_ServiceContainers(t *testing.T) {
+	input := `
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/ruby:3.4
+      - image: cimg/mysql:8.0
+    steps:
+      - checkout
+      - run: bundle exec rspec
+
+workflows:
+  main:
+    jobs:
+      - test
+`
+
+	result, err := convertCircleCI([]byte(input), "config.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(result.Workflow.Steps) != 1 {
+		t.Fatalf("expected 1 step, got %d", len(result.Workflow.Steps))
+	}
+
+	step := result.Workflow.Steps[0]
+	if len(step.Services) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(step.Services))
+	}
+	if step.Services[0].Image != "cimg/mysql:8.0" {
+		t.Errorf("expected service image cimg/mysql:8.0, got %s", step.Services[0].Image)
+	}
+
+	// Should NOT have a service containers warning anymore
+	for _, w := range result.Warnings {
+		if w.Feature == "service containers" {
+			t.Error("unexpected warning for service containers — should emit services instead")
 		}
 	}
 }

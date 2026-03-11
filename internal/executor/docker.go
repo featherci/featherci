@@ -26,6 +26,8 @@ type dockerClient interface {
 	ContainerLogs(ctx context.Context, containerID string, options container.LogsOptions) (io.ReadCloser, error)
 	ContainerStop(ctx context.Context, containerID string, options container.StopOptions) error
 	ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error
+	NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error)
+	NetworkRemove(ctx context.Context, networkID string) error
 }
 
 // DockerExecutor runs build steps inside Docker containers.
@@ -49,6 +51,18 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 		return nil, fmt.Errorf("pulling image %s: %w", opts.Image, err)
 	}
 
+	// Set up Docker network and service containers if services are configured.
+	var networkID string
+	var serviceIDs []string
+	if len(opts.Services) > 0 {
+		var err error
+		networkID, serviceIDs, err = d.startServices(ctx, opts.Services)
+		if err != nil {
+			d.cleanupServices(networkID, serviceIDs)
+			return nil, fmt.Errorf("starting service containers: %w", err)
+		}
+	}
+
 	// Wrap commands in a single shell invocation.
 	shellCmd := strings.Join(opts.Commands, " && ")
 	entrypoint := []string{"/bin/sh", "-c", shellCmd}
@@ -70,8 +84,19 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 		hostConfig.Resources.NanoCPUs = int64(opts.CPUs * 1e9)
 	}
 
-	resp, err := d.client.ContainerCreate(ctx, config, hostConfig, nil, nil, "")
+	// Attach main container to service network if services exist.
+	var networkingConfig *network.NetworkingConfig
+	if networkID != "" {
+		networkingConfig = &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				networkID: {},
+			},
+		}
+	}
+
+	resp, err := d.client.ContainerCreate(ctx, config, hostConfig, networkingConfig, nil, "")
 	if err != nil {
+		d.cleanupServices(networkID, serviceIDs)
 		return nil, fmt.Errorf("creating container: %w", err)
 	}
 	containerID := resp.ID
@@ -81,6 +106,7 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 		rmCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 		_ = d.client.ContainerRemove(rmCtx, containerID, container.RemoveOptions{Force: true})
+		d.cleanupServices(networkID, serviceIDs)
 	}()
 
 	startedAt := time.Now()
@@ -142,6 +168,83 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 			}, fmt.Errorf("step timed out after %s", opts.Timeout)
 		}
 		return nil, fmt.Errorf("waiting for container: %w", err)
+	}
+}
+
+// serviceHostname extracts a hostname from a Docker image reference.
+// "mysql:8" → "mysql", "redis/redis-stack:latest" → "redis-stack"
+func serviceHostname(img string) string {
+	// Strip tag
+	name := img
+	if idx := strings.LastIndex(name, ":"); idx != -1 {
+		name = name[:idx]
+	}
+	// Use last path component
+	if idx := strings.LastIndex(name, "/"); idx != -1 {
+		name = name[idx+1:]
+	}
+	return name
+}
+
+// startServices creates a Docker network and starts all service containers on it.
+// Returns the network ID, list of service container IDs, and any error.
+func (d *DockerExecutor) startServices(ctx context.Context, services []ServiceOption) (string, []string, error) {
+	// Create a unique network for this step execution.
+	netName := fmt.Sprintf("featherci-%d", time.Now().UnixNano())
+	netResp, err := d.client.NetworkCreate(ctx, netName, network.CreateOptions{Driver: "bridge"})
+	if err != nil {
+		return "", nil, fmt.Errorf("creating network: %w", err)
+	}
+	networkID := netResp.ID
+
+	var containerIDs []string
+	for _, svc := range services {
+		if err := d.pullImage(ctx, svc.Image); err != nil {
+			return networkID, containerIDs, fmt.Errorf("pulling service image %s: %w", svc.Image, err)
+		}
+
+		hostname := serviceHostname(svc.Image)
+
+		svcConfig := &container.Config{
+			Image:    svc.Image,
+			Env:      mapToEnvSlice(svc.Env),
+			Hostname: hostname,
+		}
+
+		svcNetConfig := &network.NetworkingConfig{
+			EndpointsConfig: map[string]*network.EndpointSettings{
+				networkID: {
+					Aliases: []string{hostname},
+				},
+			},
+		}
+
+		resp, err := d.client.ContainerCreate(ctx, svcConfig, nil, svcNetConfig, nil, "")
+		if err != nil {
+			return networkID, containerIDs, fmt.Errorf("creating service container %s: %w", svc.Image, err)
+		}
+		containerIDs = append(containerIDs, resp.ID)
+
+		if err := d.client.ContainerStart(ctx, resp.ID, container.StartOptions{}); err != nil {
+			return networkID, containerIDs, fmt.Errorf("starting service container %s: %w", svc.Image, err)
+		}
+	}
+
+	return networkID, containerIDs, nil
+}
+
+// cleanupServices stops and removes service containers and the network.
+func (d *DockerExecutor) cleanupServices(networkID string, containerIDs []string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	for _, id := range containerIDs {
+		_ = d.client.ContainerStop(ctx, id, container.StopOptions{Timeout: intPtr(5)})
+		_ = d.client.ContainerRemove(ctx, id, container.RemoveOptions{Force: true})
+	}
+
+	if networkID != "" {
+		_ = d.client.NetworkRemove(ctx, networkID)
 	}
 }
 

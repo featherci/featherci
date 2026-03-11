@@ -249,6 +249,7 @@ steps: []Step       # Steps to execute (required)</code></pre>
             <tr><td><code>continue_on_error</code></td><td>bool</td><td>No</td><td><code>false</code></td><td>Continue workflow even if this step fails</td></tr>
             <tr><td><code>cache</code></td><td>object</td><td>No</td><td>&mdash;</td><td>Build cache configuration</td></tr>
             <tr><td><code>secrets</code></td><td>[]string</td><td>No</td><td>&mdash;</td><td>Secret names to inject as env vars</td></tr>
+            <tr><td><code>services</code></td><td>[]object</td><td>No</td><td>&mdash;</td><td>Sidecar containers (databases, caches) to run alongside the step</td></tr>
           </tbody>
         </table>
 
@@ -261,6 +262,41 @@ steps: []Step       # Steps to execute (required)</code></pre>
             <tr><td><code>paths</code></td><td>[]string</td><td>Yes</td><td>Directories to cache between builds</td></tr>
           </tbody>
         </table>
+
+        <h3>Service Containers</h3>
+
+        <p>Service containers run alongside your step on a shared Docker network. Each service is accessible by hostname (derived from the image name).</p>
+
+        <table>
+          <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>image</code></td><td>string</td><td>Yes</td><td>Docker image for the service (e.g., <code>mysql:8.0</code>)</td></tr>
+            <tr><td><code>env</code></td><td>map</td><td>No</td><td>Environment variables for the service container</td></tr>
+          </tbody>
+        </table>
+
+        <p><strong>Hostname resolution:</strong> The image name (without tag or registry prefix) becomes the hostname. For example:</p>
+        <ul>
+          <li><code>mysql:8.0</code> &rarr; hostname <code>mysql</code></li>
+          <li><code>redis:7-alpine</code> &rarr; hostname <code>redis</code></li>
+          <li><code>circleci/postgres:14</code> &rarr; hostname <code>postgres</code></li>
+        </ul>
+
+        <p><strong>Example:</strong></p>
+
+        <pre><code>- name: integration-test
+  image: ruby:3.4
+  services:
+    - image: mysql:8.0
+      env:
+        MYSQL_ROOT_PASSWORD: test
+        MYSQL_DATABASE: app_test
+    - image: redis:7
+  env:
+    DATABASE_URL: mysql2://root:test@mysql/app_test
+    REDIS_URL: redis://redis:6379
+  commands:
+    - bundle exec rspec spec/integration</code></pre>
 
         <h3>Condition Expressions</h3>
 

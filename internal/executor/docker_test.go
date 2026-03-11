@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -26,6 +27,8 @@ type mockDockerClient struct {
 	containerLogsFn   func(ctx context.Context, containerID string, options container.LogsOptions) (io.ReadCloser, error)
 	containerStopFn   func(ctx context.Context, containerID string, options container.StopOptions) error
 	containerRemoveFn func(ctx context.Context, containerID string, options container.RemoveOptions) error
+	networkCreateFn   func(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error)
+	networkRemoveFn   func(ctx context.Context, networkID string) error
 }
 
 func (m *mockDockerClient) ImageInspectWithRaw(ctx context.Context, imageID string) (image.InspectResponse, []byte, error) {
@@ -83,6 +86,20 @@ func (m *mockDockerClient) ContainerStop(ctx context.Context, containerID string
 func (m *mockDockerClient) ContainerRemove(ctx context.Context, containerID string, options container.RemoveOptions) error {
 	if m.containerRemoveFn != nil {
 		return m.containerRemoveFn(ctx, containerID, options)
+	}
+	return nil
+}
+
+func (m *mockDockerClient) NetworkCreate(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
+	if m.networkCreateFn != nil {
+		return m.networkCreateFn(ctx, name, options)
+	}
+	return network.CreateResponse{ID: "net-" + name}, nil
+}
+
+func (m *mockDockerClient) NetworkRemove(ctx context.Context, networkID string) error {
+	if m.networkRemoveFn != nil {
+		return m.networkRemoveFn(ctx, networkID)
 	}
 	return nil
 }
@@ -422,5 +439,109 @@ func TestDockerExecutor_Run_Timeout(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "timed out") {
 		t.Errorf("expected timeout message, got: %v", err)
+	}
+}
+
+func TestServiceHostname(t *testing.T) {
+	tests := []struct {
+		image string
+		want  string
+	}{
+		{"mysql:8", "mysql"},
+		{"redis:7-alpine", "redis"},
+		{"postgres", "postgres"},
+		{"circleci/postgres:14", "postgres"},
+		{"ghcr.io/org/custom-db:latest", "custom-db"},
+	}
+	for _, tt := range tests {
+		got := serviceHostname(tt.image)
+		if got != tt.want {
+			t.Errorf("serviceHostname(%q) = %q, want %q", tt.image, got, tt.want)
+		}
+	}
+}
+
+func TestDockerExecutor_Run_WithServices(t *testing.T) {
+	var createdContainers []struct {
+		config     *container.Config
+		netConfig  *network.NetworkingConfig
+	}
+	var startedIDs []string
+	var networkCreated bool
+	var networkName string
+
+	mock := &mockDockerClient{
+		networkCreateFn: func(ctx context.Context, name string, options network.CreateOptions) (network.CreateResponse, error) {
+			networkCreated = true
+			networkName = name
+			return network.CreateResponse{ID: "net-123"}, nil
+		},
+		containerCreateFn: func(ctx context.Context, config *container.Config, hostConfig *container.HostConfig, netConfig *network.NetworkingConfig, platform *ocispec.Platform, containerName string) (container.CreateResponse, error) {
+			createdContainers = append(createdContainers, struct {
+				config    *container.Config
+				netConfig *network.NetworkingConfig
+			}{config, netConfig})
+			id := fmt.Sprintf("container-%d", len(createdContainers))
+			return container.CreateResponse{ID: id}, nil
+		},
+		containerStartFn: func(ctx context.Context, containerID string, options container.StartOptions) error {
+			startedIDs = append(startedIDs, containerID)
+			return nil
+		},
+	}
+	exec := &DockerExecutor{client: mock}
+
+	result, err := exec.Run(context.Background(), RunOptions{
+		Image:    "ruby:3.4",
+		Commands: []string{"bundle exec rspec"},
+		Services: []ServiceOption{
+			{Image: "mysql:8.0", Env: map[string]string{"MYSQL_ROOT_PASSWORD": "test"}},
+			{Image: "redis:7"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.ExitCode != 0 {
+		t.Errorf("expected exit code 0, got %d", result.ExitCode)
+	}
+
+	// Network should be created
+	if !networkCreated {
+		t.Error("expected network to be created")
+	}
+	if !strings.HasPrefix(networkName, "featherci-") {
+		t.Errorf("expected network name to start with featherci-, got %s", networkName)
+	}
+
+	// Should have created 3 containers: 2 services + 1 main
+	if len(createdContainers) != 3 {
+		t.Fatalf("expected 3 containers created, got %d", len(createdContainers))
+	}
+
+	// First container: mysql service
+	mysqlConfig := createdContainers[0].config
+	if mysqlConfig.Image != "mysql:8.0" {
+		t.Errorf("expected mysql:8.0, got %s", mysqlConfig.Image)
+	}
+	if mysqlConfig.Hostname != "mysql" {
+		t.Errorf("expected hostname mysql, got %s", mysqlConfig.Hostname)
+	}
+
+	// Second container: redis service
+	redisConfig := createdContainers[1].config
+	if redisConfig.Image != "redis:7" {
+		t.Errorf("expected redis:7, got %s", redisConfig.Image)
+	}
+
+	// Third container: main container (should be on the network)
+	mainNetConfig := createdContainers[2].netConfig
+	if mainNetConfig == nil || mainNetConfig.EndpointsConfig["net-123"] == nil {
+		t.Error("expected main container to be attached to service network")
+	}
+
+	// All 3 containers should be started (2 services + 1 main)
+	if len(startedIDs) != 3 {
+		t.Errorf("expected 3 containers started, got %d", len(startedIDs))
 	}
 }

@@ -131,6 +131,19 @@ type Step struct {
 
 	// Secrets is a list of secret names to make available to this step.
 	Secrets []string `yaml:"secrets"`
+
+	// Services is a list of sidecar containers to run alongside this step.
+	// Each service is accessible by its image name (without tag) as hostname.
+	Services []ServiceConfig `yaml:"services"`
+}
+
+// ServiceConfig defines a sidecar container to run alongside a step.
+type ServiceConfig struct {
+	// Image is the Docker image for the service (e.g., "mysql:8", "redis:7").
+	Image string `yaml:"image"`
+
+	// Env is a map of environment variables to set on the service container.
+	Env map[string]string `yaml:"env"`
 }
 
 // CacheConfig defines caching configuration for a step.

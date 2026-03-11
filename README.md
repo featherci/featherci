@@ -148,10 +148,13 @@ This will:
 | Dependencies | `needs` | `requires` |
 | Caching | `actions/cache` | `save_cache`/`restore_cache` |
 | Secrets | `${{ secrets.X }}` | — |
-| Conditions | `github.ref` expressions | Workflow filters (warning) |
+| Conditions | `github.ref` expressions | Workflow filters → `if` |
 | Approvals | — | `type: approval` |
+| Service containers | — | `docker[1:]` → `services` |
+| Custom commands | — | Inlined with shell equivalents |
+| Common orbs | — | Expanded to shell commands |
 
-Features like GitHub Actions (`uses:`), build matrices, service containers, and orbs will generate warnings with guidance on alternatives.
+Features like GitHub Actions (`uses:`), build matrices, and advanced orbs will generate warnings with guidance on alternatives.
 
 ## Workflow Configuration
 
@@ -194,6 +197,21 @@ steps:
     type: approval
     depends_on: [build]
 
+  - name: integration
+    image: ruby:3.4
+    depends_on: [test]
+    services:
+      - image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test
+      - image: redis:7
+    commands:
+      - bundle exec rspec spec/integration
+
+  - name: deploy-approval
+    type: approval
+    depends_on: [build, integration]
+
   - name: deploy
     image: alpine:latest
     depends_on: [deploy-approval]
@@ -203,6 +221,8 @@ steps:
     env:
       DEPLOY_TOKEN: $DEPLOY_TOKEN
 ```
+
+Service containers run on a shared Docker network and are accessible from the step container by hostname (derived from the image name, e.g., `mysql:8.0` → hostname `mysql`).
 
 <!-- SCREENSHOT: docs/images/workflow-example.png - Split view showing the workflow YAML alongside the resulting build with steps -->
 
@@ -225,6 +245,7 @@ steps:
 | `env` | Environment variables (can reference secrets with `$NAME`) |
 | `cache.key` | Cache key template (supports `{{ checksum "file" }}`) |
 | `cache.paths` | Directories to cache between builds |
+| `services` | Sidecar containers (e.g., databases) accessible by hostname |
 
 ## Secrets Management
 

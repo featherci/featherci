@@ -144,6 +144,14 @@ func (c *BuildCreator) createSteps(ctx context.Context, build *models.Build, wf 
 			}
 		}
 
+		var services []models.ServiceConfig
+		for _, svc := range s.Services {
+			services = append(services, models.ServiceConfig{
+				Image: svc.Image,
+				Env:   svc.Env,
+			})
+		}
+
 		step := &models.BuildStep{
 			BuildID:          build.ID,
 			Name:             s.Name,
@@ -156,6 +164,7 @@ func (c *BuildCreator) createSteps(ctx context.Context, build *models.Build, wf 
 			WorkingDir:       s.WorkingDir,
 			TimeoutMinutes:   s.GetTimeout(),
 			Cache:            cache,
+			Services:         services,
 			ConditionExpr:    s.If,
 		}
 

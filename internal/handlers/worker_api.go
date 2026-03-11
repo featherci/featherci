@@ -88,12 +88,13 @@ type stepJSON struct {
 	Commands         []string          `json:"commands"`
 	Env              map[string]string `json:"env"`
 	DependsOn        []string          `json:"depends_on"`
-	Cache            *models.CacheConfig `json:"cache,omitempty"`
-	CacheResolvedKey string            `json:"cache_resolved_key,omitempty"`
-	WorkingDir       string            `json:"working_dir"`
-	TimeoutMinutes   int               `json:"timeout_minutes"`
-	RequiresApproval bool              `json:"requires_approval"`
-	ConditionExpr    string            `json:"condition_expr,omitempty"`
+	Cache            *models.CacheConfig    `json:"cache,omitempty"`
+	CacheResolvedKey string                 `json:"cache_resolved_key,omitempty"`
+	Services         []models.ServiceConfig `json:"services,omitempty"`
+	WorkingDir       string                 `json:"working_dir"`
+	TimeoutMinutes   int                    `json:"timeout_minutes"`
+	RequiresApproval bool                   `json:"requires_approval"`
+	ConditionExpr    string                 `json:"condition_expr,omitempty"`
 }
 
 func stepToJSON(s *models.BuildStep) stepJSON {
@@ -108,6 +109,7 @@ func stepToJSON(s *models.BuildStep) stepJSON {
 		DependsOn:        s.DependsOn,
 		Cache:            s.Cache,
 		CacheResolvedKey: s.CacheResolvedKey,
+		Services:         s.Services,
 		WorkingDir:       s.WorkingDir,
 		TimeoutMinutes:   s.TimeoutMinutes,
 		RequiresApproval: s.RequiresApproval,

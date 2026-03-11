@@ -124,6 +124,35 @@ FEATHERCI_GITEA_CLIENT_ID=your_client_id
 FEATHERCI_GITEA_CLIENT_SECRET=your_client_secret
 ```
 
+## Migrating from GitHub Actions or CircleCI
+
+Already using another CI system? FeatherCI can automatically convert your existing configuration:
+
+```bash
+cd your-project
+featherci convert
+```
+
+This will:
+- Auto-detect `.github/workflows/*.yml` or `.circleci/config.yml`
+- Generate `.featherci/workflow.yml` with equivalent steps
+- Rename the original file with `.bak` so you can review and delete it
+- Print clear warnings for any features that need manual adjustment
+
+**Supported conversions:**
+
+| Feature | GitHub Actions | CircleCI |
+|---------|---------------|----------|
+| Jobs/steps | Jobs → steps | Jobs → steps |
+| Docker images | `container` | `docker` |
+| Dependencies | `needs` | `requires` |
+| Caching | `actions/cache` | `save_cache`/`restore_cache` |
+| Secrets | `${{ secrets.X }}` | — |
+| Conditions | `github.ref` expressions | Workflow filters (warning) |
+| Approvals | — | `type: approval` |
+
+Features like GitHub Actions (`uses:`), build matrices, service containers, and orbs will generate warnings with guidance on alternatives.
+
 ## Workflow Configuration
 
 Create `.featherci/workflow.yml` in your repository:
@@ -294,6 +323,7 @@ cmd/featherci/       # Application entrypoint
 internal/
   auth/              # OAuth provider implementations
   config/            # Configuration loading
+  convert/           # CI migration tool (GitHub Actions, CircleCI)
   crypto/            # Encryption utilities
   database/          # SQLite migrations
   executor/          # Docker step execution

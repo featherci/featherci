@@ -1,19 +1,9 @@
-# YAML Config File + Homebrew Docs
+# Convert Command - CI Migration Tool
 
-## Config File Support
-- [x] 1. Add `--config` flag to main.go, pass path to config.Load()
-- [x] 2. Add YAML config file loading to internal/config/config.go
-- [x] 3. Create scripts/config.yaml.example with all options documented
-- [x] 4. Add tests for YAML config loading
-- [x] 5. Update install.sh to install the example YAML config
-
-## Documentation
-- [x] 6. Add Homebrew installation section to docs/docs/index.html
-- [x] 7. Update deployment.html systemd section to show YAML config option
-- [x] 8. Update Homebrew formula caveats to mention config file
-- [x] 9. Add Homebrew to the marketing landing page (tabbed install)
-
-## Verification
-- [x] go build ./... — clean
-- [x] go vet ./... — clean
-- [x] go test ./... — all pass
+## Implementation
+- [x] 1. `internal/convert/convert.go` - Types, ANSI helpers, orchestration
+- [x] 2. `internal/convert/github.go` - GitHub Actions converter
+- [x] 3. `internal/convert/circleci.go` - CircleCI converter
+- [x] 4. `cmd/featherci/main.go` - Handle `convert` subcommand
+- [x] 5. Tests (15 tests, all passing)
+- [x] 6. Verify: build, vet, test — all clean

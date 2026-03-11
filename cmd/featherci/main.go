@@ -16,6 +16,7 @@ import (
 
 	"github.com/featherci/featherci/internal/cache"
 	"github.com/featherci/featherci/internal/config"
+	"github.com/featherci/featherci/internal/convert"
 	"github.com/featherci/featherci/internal/crypto"
 	"github.com/featherci/featherci/internal/database"
 	"github.com/featherci/featherci/internal/executor"
@@ -30,6 +31,12 @@ import (
 )
 
 func main() {
+	// Handle subcommands before flag.Parse()
+	if len(os.Args) > 1 && os.Args[1] == "convert" {
+		runConvert()
+		return
+	}
+
 	var (
 		showVersion = flag.Bool("version", false, "Print version information and exit")
 		generateKey = flag.Bool("generate-key", false, "Generate a secure encryption key and exit")
@@ -39,9 +46,12 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "FeatherCI - Lightweight self-hosted CI/CD\n\n")
-		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s convert [directory]\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
+		fmt.Fprintf(os.Stderr, "\nCommands:\n")
+		fmt.Fprintf(os.Stderr, "  convert    Convert .github/workflows or .circleci config to FeatherCI format\n")
 	}
 
 	flag.Parse()
@@ -318,6 +328,19 @@ func runWorkerMode(ctx context.Context, cfg *config.Config, logger *slog.Logger)
 	// Block until context is cancelled
 	<-ctx.Done()
 	return nil
+}
+
+// runConvert handles the "featherci convert" subcommand.
+func runConvert() {
+	dir := "."
+	if len(os.Args) > 2 {
+		dir = os.Args[2]
+	}
+
+	if err := convert.Run(dir); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 // generateSecretKey generates a cryptographically secure 32-byte key

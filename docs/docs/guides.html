@@ -71,6 +71,7 @@
               <li><a href="guides.html#notifications" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Notifications</a></li>
               <li><a href="guides.html#manual-approvals" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Manual Approvals</a></li>
               <li><a href="guides.html#distributed-workers" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Distributed Workers</a></li>
+              <li><a href="guides.html#migrating" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Migrating from Other CI</a></li>
             </ul>
           </div>
           <div>
@@ -576,6 +577,120 @@ steps:
           <li>If a build is cancelled, pending approval steps are also cancelled</li>
           <li>Approval steps don't have a timeout &mdash; they wait indefinitely until approved or cancelled</li>
         </ul>
+
+        <hr>
+
+        <!-- Migrating from Other CI -->
+        <h2 id="migrating">Migrating from Other CI</h2>
+
+        <p>If you're already using GitHub Actions or CircleCI, FeatherCI can automatically convert your existing configuration to a FeatherCI workflow.</p>
+
+        <h3>Usage</h3>
+
+        <pre><code>cd your-project
+featherci convert</code></pre>
+
+        <p>The command auto-detects your CI configuration and generates <code>.featherci/workflow.yml</code>. The original file is renamed with a <code>.bak</code> suffix so you can review the result and delete it when ready.</p>
+
+        <p>You can also specify a directory:</p>
+
+        <pre><code>featherci convert /path/to/project</code></pre>
+
+        <h3>What Gets Converted</h3>
+
+        <table>
+          <thead><tr><th>Feature</th><th>GitHub Actions</th><th>CircleCI</th></tr></thead>
+          <tbody>
+            <tr><td>Workflow name</td><td><code>name</code></td><td>Workflow key name</td></tr>
+            <tr><td>Triggers</td><td><code>on.push</code> / <code>on.pull_request</code> with branch filters</td><td>Defaults to all pushes (with warning)</td></tr>
+            <tr><td>Docker images</td><td><code>container</code> field</td><td><code>docker[0].image</code></td></tr>
+            <tr><td>Commands</td><td><code>run:</code> blocks</td><td><code>run:</code> steps</td></tr>
+            <tr><td>Dependencies</td><td><code>needs</code></td><td><code>requires</code></td></tr>
+            <tr><td>Caching</td><td><code>actions/cache</code> (key + path)</td><td><code>save_cache</code> / <code>restore_cache</code></td></tr>
+            <tr><td>Secrets</td><td><code>${{ secrets.X }}</code> references</td><td>&mdash;</td></tr>
+            <tr><td>Conditions</td><td><code>github.ref</code> expressions &rarr; <code>branch</code></td><td>Filters (warning)</td></tr>
+            <tr><td>Approval gates</td><td>&mdash;</td><td><code>type: approval</code></td></tr>
+            <tr><td>Environment variables</td><td>Global and job-level <code>env</code></td><td><code>environment</code> and Docker env</td></tr>
+            <tr><td>Timeouts</td><td><code>timeout-minutes</code></td><td>&mdash;</td></tr>
+            <tr><td>Continue on error</td><td><code>continue-on-error</code></td><td>&mdash;</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Unsupported Features</h3>
+
+        <p>The converter prints yellow warnings for features that can't be automatically converted. These need manual adjustment:</p>
+
+        <p><strong>GitHub Actions:</strong></p>
+        <ul>
+          <li><code>uses:</code> actions &mdash; replace with equivalent shell commands</li>
+          <li><code>runs-on:</code> without <code>container</code> &mdash; choose an appropriate Docker image</li>
+          <li>Build matrices (<code>strategy.matrix</code>) &mdash; create separate steps for each variant</li>
+          <li>Service containers &mdash; use Docker Compose in your commands instead</li>
+          <li>Artifacts, permissions, concurrency, reusable workflows</li>
+        </ul>
+
+        <p><strong>CircleCI:</strong></p>
+        <ul>
+          <li>Orbs &mdash; replace with equivalent shell commands</li>
+          <li>Machine and macOS executors &mdash; FeatherCI uses Linux Docker containers only</li>
+          <li><code>persist_to_workspace</code> / <code>attach_workspace</code> &mdash; use caching or restructure your pipeline</li>
+          <li><code>store_artifacts</code> / <code>store_test_results</code></li>
+          <li>Parallelism (test splitting)</li>
+        </ul>
+
+        <h3>Example</h3>
+
+        <p>Given this GitHub Actions workflow:</p>
+
+        <pre><code>name: CI
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: golang:1.22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v3
+        with:
+          path: /go/pkg/mod
+          key: go-${{ hashFiles('go.sum') }}
+      - run: go test ./...
+
+  build:
+    needs: [test]
+    runs-on: ubuntu-latest
+    container: golang:1.22
+    steps:
+      - uses: actions/checkout@v4
+      - run: go build -o app .</code></pre>
+
+        <p>Running <code>featherci convert</code> produces:</p>
+
+        <pre><code>name: CI
+on:
+  push:
+    branches:
+      - main
+
+steps:
+  - name: test
+    image: golang:1.22
+    commands:
+      - go test ./...
+    cache:
+      key: go-{{ checksum "go.sum" }}
+      paths:
+        - /go/pkg/mod
+
+  - name: build
+    image: golang:1.22
+    depends_on:
+      - test
+    commands:
+      - go build -o app .</code></pre>
 
         <hr>
 

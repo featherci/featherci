@@ -1,6 +1,6 @@
 # Binaries
 /bin/
-featherci
+/featherci
 
 # Tailwind CLI binary (downloaded on demand)
 bin/tailwindcss

@@ -29,7 +29,7 @@ web/tailwind/node_modules/
 
 # Build cache
 .cache/
-cache/
+/cache/
 
 # OS files
 .DS_Store

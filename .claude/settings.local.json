@@ -25,7 +25,9 @@
       "Bash(go tool:*)",
       "Bash(gofmt -l . 2>&1)",
       "Bash(gofmt -s -w internal/models/build_step.go internal/notify/slack.go internal/server/server.go internal/services/build_creator_test.go internal/templates/engine.go internal/webhooks/gitlab.go)",
-      "Bash(for pkg:*)"
+      "Bash(for pkg:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git ls-tree:*)"
     ]
   }
 }

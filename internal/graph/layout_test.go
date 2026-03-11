@@ -252,8 +252,9 @@ func TestCalculate_ConnectionPoints(t *testing.T) {
 }
 
 func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
-	// Col 0: [build-docker, simple]
-	// Col 1: [deploy-to-staging] depends on both, [flipper] depends only on simple
+	// Col 0: [build-docker, simple] — same deps (none), one group
+	// Col 1: [flipper] depends on simple only — one group
+	//         [deploy-to-staging] depends on both — separate group
 	steps := []*models.BuildStep{
 		makeStep("build-docker"),
 		makeStep("simple"),
@@ -265,8 +266,9 @@ func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
 		t.Fatal("expected non-nil layout")
 	}
 
-	if len(layout.Groups) != 2 {
-		t.Fatalf("expected 2 groups, got %d", len(layout.Groups))
+	// 3 groups: col0=[build-docker,simple], col1=[flipper], col1=[deploy-to-staging]
+	if len(layout.Groups) != 3 {
+		t.Fatalf("expected 3 groups, got %d", len(layout.Groups))
 	}
 
 	// 3 edges: build-docker→deploy, simple→deploy, simple→flipper
@@ -274,7 +276,7 @@ func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
 		t.Errorf("expected 3 edges, got %d", len(layout.Edges))
 	}
 
-	// Verify edges target different Y positions (flipper and deploy-to-staging are at different Y)
+	// Verify edges target different Y positions (flipper and deploy-to-staging are in different groups)
 	edgeYs := make(map[int]bool)
 	for _, e := range layout.Edges {
 		edgeYs[e.ToY] = true

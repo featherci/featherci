@@ -4,21 +4,23 @@ package graph
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/featherci/featherci/internal/models"
 )
 
 const (
-	nodeWidth  = 240
-	nodeHeight = 36
-	nodeGapY   = 8
-	groupPadX  = 16
-	groupPadY  = 12
-	colGap     = 60
-	graphPadX  = 24
-	graphPadY  = 24
-	dotRadius  = 4
+	nodeWidth   = 240
+	nodeHeight  = 36
+	nodeGapY    = 8
+	groupPadX   = 16
+	groupPadY   = 12
+	colGap      = 60
+	subGroupGap = 16
+	graphPadX   = 24
+	graphPadY   = 24
+	dotRadius   = 4
 )
 
 // Layout holds the complete graph layout for SVG rendering.
@@ -29,15 +31,17 @@ type Layout struct {
 	Height int
 }
 
-// Group is a column of nodes sharing the same dependency depth.
+// Group is a set of nodes sharing the same column and dependency set.
 type Group struct {
 	Nodes          []Node
 	X, Y           int
 	Width          int
 	Height         int
 	Column         int
-	LeftX, LeftY   int // center-left connection point
-	RightX, RightY int // center-right connection point
+	LeftX, LeftY   int  // center-left connection point
+	RightX, RightY int  // center-right connection point
+	HasIncoming    bool // true if any edge targets this group
+	HasOutgoing    bool // true if any edge originates from this group
 }
 
 // Node is a single build step within a group.
@@ -49,16 +53,18 @@ type Node struct {
 	RequiresApproval bool
 	Approved         bool // true if ApprovedBy is set (step was approved)
 	X, Y             int  // absolute position within SVG
-	LeftX, LeftY     int  // center-left connection point (at group edge)
-	RightX, RightY   int  // center-right connection point (at group edge)
-	HasIncoming      bool // true if any edge targets this node
-	HasOutgoing      bool // true if any edge originates from this node
 }
 
 // Edge connects the right side of one group to the left side of another.
 type Edge struct {
 	FromX, FromY int
 	ToX, ToY     int
+}
+
+// groupEntry pairs a Group with its dependency set key for layout ordering.
+type groupEntry struct {
+	group  Group
+	depKey string
 }
 
 // Calculate computes the pipeline graph layout from build steps.
@@ -92,105 +98,143 @@ func Calculate(steps []*models.BuildStep) *Layout {
 		assignColumn(s.Name, byName, columns)
 	}
 
-	// Group steps by column
+	// Sub-group steps by (column, sorted dependency set).
+	// Steps with identical deps share a visual box.
+	type sgKey struct {
+		col    int
+		depKey string
+	}
+
 	maxCol := 0
-	colSteps := make(map[int][]*models.BuildStep)
+	sgSteps := make(map[sgKey][]*models.BuildStep)
 	for _, s := range steps {
 		col := columns[s.Name]
-		colSteps[col] = append(colSteps[col], s)
+		key := sgKey{col, depSetKey(s)}
+		sgSteps[key] = append(sgSteps[key], s)
 		if col > maxCol {
 			maxCol = col
 		}
 	}
 
-	// Build groups
-	groups := make([]Group, 0, maxCol+1)
-	groupByCol := make(map[int]*Group)
+	// Collect sub-group keys per column, sort steps within each alphabetically
+	colKeys := make(map[int][]sgKey)
+	for key := range sgSteps {
+		ss := sgSteps[key]
+		sort.Slice(ss, func(i, j int) bool { return ss[i].Name < ss[j].Name })
+		colKeys[key.col] = append(colKeys[key.col], key)
+	}
+	// Stable initial sort of sub-group keys by depKey
+	for col := range colKeys {
+		keys := colKeys[col]
+		sort.Slice(keys, func(i, j int) bool { return keys[i].depKey < keys[j].depKey })
+	}
 
-	x := graphPadX
-	maxHeight := 0
+	// Build Group objects (without X/Y positions yet)
+	groupWidth := nodeWidth + 2*groupPadX
+	colGroupIndices := make(map[int][]int) // col → indices into allGroups
+	var allGroups []groupEntry
+	colHeights := make(map[int]int)
 
 	for col := 0; col <= maxCol; col++ {
-		ss := colSteps[col]
-		if len(ss) == 0 {
+		keys := colKeys[col]
+		if len(keys) == 0 {
+			continue
+		}
+		totalH := 0
+		for i, key := range keys {
+			ss := sgSteps[key]
+			h := 2*groupPadY + len(ss)*nodeHeight + (len(ss)-1)*nodeGapY
+			g := Group{Column: col, Width: groupWidth, Height: h}
+			for _, s := range ss {
+				g.Nodes = append(g.Nodes, Node{
+					ID:               s.ID,
+					Name:             truncate(s.Name, 24),
+					Status:           string(s.Status),
+					Duration:         formatStepDuration(s),
+					RequiresApproval: s.RequiresApproval,
+					Approved:         s.ApprovedBy != nil,
+				})
+			}
+			idx := len(allGroups)
+			allGroups = append(allGroups, groupEntry{group: g, depKey: key.depKey})
+			colGroupIndices[col] = append(colGroupIndices[col], idx)
+			totalH += h
+			if i > 0 {
+				totalH += subGroupGap
+			}
+		}
+		colHeights[col] = totalH
+	}
+
+	// Find max column height for vertical centering
+	maxHeight := 0
+	for _, h := range colHeights {
+		if h > maxHeight {
+			maxHeight = h
+		}
+	}
+	totalHeight := maxHeight + 2*graphPadY
+
+	// Position groups left-to-right; order sub-groups by avg source Y to minimize crossings
+	// Map step name → group index for source-Y lookups
+	nameToGroupIdx := make(map[string]int, len(steps))
+	x := graphPadX
+
+	for col := 0; col <= maxCol; col++ {
+		indices := colGroupIndices[col]
+		if len(indices) == 0 {
 			continue
 		}
 
-		// Sort nodes within group by name for stable ordering
-		sort.Slice(ss, func(i, j int) bool {
-			return ss[i].Name < ss[j].Name
-		})
-
-		groupWidth := nodeWidth + 2*groupPadX
-		groupHeight := 2*groupPadY + len(ss)*nodeHeight + (len(ss)-1)*nodeGapY
-
-		g := Group{
-			Column: col,
-			X:      x,
-			Width:  groupWidth,
-			Height: groupHeight,
-		}
-
-		// Build nodes with positions
-		for i, s := range ss {
-			nodeY := groupPadY + i*(nodeHeight+nodeGapY)
-			g.Nodes = append(g.Nodes, Node{
-				ID:               s.ID,
-				Name:             truncate(s.Name, 24),
-				Status:           string(s.Status),
-				Duration:         formatStepDuration(s),
-				RequiresApproval: s.RequiresApproval,
-				Approved:         s.ApprovedBy != nil,
+		// For col > 0, sort sub-groups by average Y of their source groups
+		if col > 0 {
+			sort.SliceStable(indices, func(i, j int) bool {
+				return avgSourceY(allGroups[indices[i]].depKey, nameToGroupIdx, allGroups) <
+					avgSourceY(allGroups[indices[j]].depKey, nameToGroupIdx, allGroups)
 			})
-			// Absolute Y will be set after vertical centering; store relative for now
-			_ = nodeY
 		}
 
-		groups = append(groups, g)
-		groupByCol[col] = &groups[len(groups)-1]
+		// Stack sub-groups vertically, centered in the column
+		colH := colHeights[col]
+		y := graphPadY + (maxHeight-colH)/2
 
-		if groupHeight > maxHeight {
-			maxHeight = groupHeight
+		for gi, idx := range indices {
+			if gi > 0 {
+				y += subGroupGap
+			}
+			g := &allGroups[idx].group
+			g.X = x
+			g.Y = y
+
+			for j := range g.Nodes {
+				g.Nodes[j].X = g.X + groupPadX
+				g.Nodes[j].Y = g.Y + groupPadY + j*(nodeHeight+nodeGapY)
+				nameToGroupIdx[g.Nodes[j].Name] = idx
+			}
+
+			g.LeftX = g.X
+			g.LeftY = g.Y + g.Height/2
+			g.RightX = g.X + g.Width
+			g.RightY = g.Y + g.Height/2
+
+			y += g.Height
 		}
 
 		x += groupWidth + colGap
 	}
 
-	// Set vertical positions: center each group relative to tallest
-	totalHeight := maxHeight + 2*graphPadY
-	for i := range groups {
-		groups[i].Y = graphPadY + (maxHeight-groups[i].Height)/2
-
-		// Calculate absolute node positions and connection points
-		for j := range groups[i].Nodes {
-			groups[i].Nodes[j].X = groups[i].X + groupPadX
-			groups[i].Nodes[j].Y = groups[i].Y + groupPadY + j*(nodeHeight+nodeGapY)
-			nodeCenterY := groups[i].Nodes[j].Y + nodeHeight/2
-			groups[i].Nodes[j].LeftX = groups[i].X
-			groups[i].Nodes[j].LeftY = nodeCenterY
-			groups[i].Nodes[j].RightX = groups[i].X + groups[i].Width
-			groups[i].Nodes[j].RightY = nodeCenterY
-		}
-
-		// Connection points
-		groups[i].LeftX = groups[i].X
-		groups[i].LeftY = groups[i].Y + groups[i].Height/2
-		groups[i].RightX = groups[i].X + groups[i].Width
-		groups[i].RightY = groups[i].Y + groups[i].Height/2
-	}
-
 	totalWidth := x - colGap + graphPadX
 
-	// Build node-to-node edges based on dependencies
-	// Map step name to its Node pointer (within the groups slice)
-	nameToNode := make(map[string]*Node, len(steps))
-	for i := range groups {
-		for j := range groups[i].Nodes {
-			nameToNode[groups[i].Nodes[j].Name] = &groups[i].Nodes[j]
-		}
+	// Collect groups into final slice
+	groups := make([]Group, len(allGroups))
+	for i := range allGroups {
+		groups[i] = allGroups[i].group
 	}
-	// Track unique node-to-node edges
-	type edgeKey struct{ from, to string }
+
+	// Build group-to-group edges (one edge per source-group → target-group pair).
+	// Since groups contain steps with identical deps, this is the right granularity.
+	// nameToGroupIdx was populated during positioning above.
+	type edgeKey struct{ from, to int }
 	seenEdges := make(map[edgeKey]bool)
 
 	var edges []Edge
@@ -198,32 +242,33 @@ func Calculate(steps []*models.BuildStep) *Layout {
 		if len(s.DependsOn) == 0 {
 			continue
 		}
-		toNode := nameToNode[truncate(s.Name, 24)]
-		if toNode == nil {
+		toIdx, ok := nameToGroupIdx[truncate(s.Name, 24)]
+		if !ok {
 			continue
 		}
 
 		for _, depName := range s.DependsOn {
-			truncDep := truncate(depName, 24)
-			fromNode := nameToNode[truncDep]
-			if fromNode == nil {
+			fromIdx, ok := nameToGroupIdx[truncate(depName, 24)]
+			if !ok {
 				continue
 			}
 
-			key := edgeKey{fromNode.Name, toNode.Name}
+			key := edgeKey{fromIdx, toIdx}
 			if seenEdges[key] {
 				continue
 			}
 			seenEdges[key] = true
 
-			fromNode.HasOutgoing = true
-			toNode.HasIncoming = true
+			fromGroup := &groups[fromIdx]
+			toGroup := &groups[toIdx]
+			fromGroup.HasOutgoing = true
+			toGroup.HasIncoming = true
 
 			edges = append(edges, Edge{
-				FromX: fromNode.RightX,
-				FromY: fromNode.RightY,
-				ToX:   toNode.LeftX,
-				ToY:   toNode.LeftY,
+				FromX: fromGroup.RightX,
+				FromY: fromGroup.RightY,
+				ToX:   toGroup.LeftX,
+				ToY:   toGroup.LeftY,
 			})
 		}
 	}
@@ -234,6 +279,42 @@ func Calculate(steps []*models.BuildStep) *Layout {
 		Width:  totalWidth,
 		Height: totalHeight,
 	}
+}
+
+// depSetKey returns a canonical string key for a step's sorted dependency set.
+func depSetKey(s *models.BuildStep) string {
+	if len(s.DependsOn) == 0 {
+		return ""
+	}
+	sorted := make([]string, len(s.DependsOn))
+	copy(sorted, s.DependsOn)
+	sort.Strings(sorted)
+	return strings.Join(sorted, "\x00")
+}
+
+// avgSourceY computes the average center Y of source groups for a dependency set key.
+func avgSourceY(dk string, nameToGroupIdx map[string]int, allGroups []groupEntry) float64 {
+	if dk == "" {
+		return 0
+	}
+	deps := strings.Split(dk, "\x00")
+	sum := 0.0
+	count := 0
+	seen := make(map[int]bool)
+	for _, dep := range deps {
+		idx, ok := nameToGroupIdx[truncate(dep, 24)]
+		if !ok || seen[idx] {
+			continue
+		}
+		seen[idx] = true
+		g := &allGroups[idx].group
+		sum += float64(g.LeftY)
+		count++
+	}
+	if count == 0 {
+		return 0
+	}
+	return sum / float64(count)
 }
 
 // assignColumn recursively assigns a column to a step based on dependencies.

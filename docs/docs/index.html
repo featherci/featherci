@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Getting Started - FeatherCI Docs</title>
+  <meta name="description" content="Install and configure FeatherCI. Set up your first project and run your first build.">
+  <link rel="icon" href="../images/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../css/docs.css">
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="bg-gray-900 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <div class="flex items-center">
+          <a href="../" class="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors">
+            <svg class="h-8 w-8 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+              <line x1="16" y1="8" x2="2" y2="22"/>
+              <line x1="17.5" y1="15" x2="9" y2="15"/>
+            </svg>
+            <span class="text-xl font-bold">FeatherCI</span>
+          </a>
+          <div class="hidden md:flex ml-10 items-center space-x-1">
+            <a href="./" class="text-white bg-gray-800 rounded-md px-3 py-2 text-sm font-medium">Docs</a>
+            <a href="https://github.com/featherci/featherci" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium transition-colors">GitHub</a>
+          </div>
+        </div>
+        <button id="nav-toggle" class="md:hidden text-gray-300 hover:text-white">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-700">
+      <div class="px-4 py-3 space-y-2">
+        <a href="./" class="block text-white text-sm font-medium">Docs</a>
+        <a href="https://github.com/featherci/featherci" class="block text-gray-300 text-sm font-medium">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="lg:flex lg:gap-8">
+
+      <!-- Sidebar -->
+      <button id="sidebar-toggle" class="lg:hidden mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Menu
+      </button>
+      <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
+      <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white lg:bg-transparent border-r lg:border-0 border-gray-200 overflow-y-auto -translate-x-full lg:translate-x-0 transition-transform lg:shrink-0 pt-4 px-4 lg:px-0">
+        <nav class="space-y-6 text-sm">
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Getting Started</h4>
+            <ul class="space-y-1">
+              <li><a href="./" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Installation</a></li>
+              <li><a href="./#configuration" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Configuration</a></li>
+              <li><a href="./#first-project" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">First Project</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Guides</h4>
+            <ul class="space-y-1">
+              <li><a href="guides.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Syntax</a></li>
+              <li><a href="guides.html#secrets" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Secrets</a></li>
+              <li><a href="guides.html#caching" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Caching</a></li>
+              <li><a href="guides.html#notifications" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Notifications</a></li>
+              <li><a href="guides.html#manual-approvals" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Manual Approvals</a></li>
+              <li><a href="guides.html#distributed-workers" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Distributed Workers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Reference</h4>
+            <ul class="space-y-1">
+              <li><a href="reference.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Environment Variables</a></li>
+              <li><a href="reference.html#workflow-schema" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Schema</a></li>
+              <li><a href="reference.html#api" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">API Endpoints</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Deployment</h4>
+            <ul class="space-y-1">
+              <li><a href="deployment.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Docker</a></li>
+              <li><a href="deployment.html#systemd" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Systemd</a></li>
+              <li><a href="deployment.html#kubernetes" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Kubernetes</a></li>
+            </ul>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <main class="min-w-0 flex-1 prose">
+
+        <h1>Getting Started</h1>
+
+        <h2 id="installation">Installation</h2>
+
+        <h3>Docker (Recommended)</h3>
+
+        <p>The fastest way to run FeatherCI. The Docker socket mount is required so FeatherCI can run build steps in containers.</p>
+
+        <pre><code>docker run -d \
+  -p 8080:8080 \
+  -v featherci-data:/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e FEATHERCI_SECRET_KEY=$(openssl rand -base64 32) \
+  -e FEATHERCI_BASE_URL=http://localhost:8080 \
+  -e FEATHERCI_ADMINS=yourusername \
+  -e FEATHERCI_GITHUB_CLIENT_ID=your_client_id \
+  -e FEATHERCI_GITHUB_CLIENT_SECRET=your_client_secret \
+  featherci/featherci:latest</code></pre>
+
+        <p>See <a href="deployment.html">Docker Deployment</a> for production configuration, Docker Compose, and the sibling container pattern.</p>
+
+        <h3>Binary Download</h3>
+
+        <p>Download a pre-built binary from the <a href="https://github.com/featherci/featherci/releases">GitHub releases page</a>:</p>
+
+        <pre><code># Download the latest release (example for Linux amd64)
+curl -Lo featherci https://github.com/featherci/featherci/releases/latest/download/featherci-linux-amd64
+chmod +x featherci
+
+# Generate an encryption key
+./featherci --generate-key
+# Copy the output and set it as FEATHERCI_SECRET_KEY
+
+# Run it
+./featherci</code></pre>
+
+        <h3>From Source</h3>
+
+        <p>Requires Go 1.22+ and Make:</p>
+
+        <pre><code>git clone https://github.com/featherci/featherci.git
+cd featherci
+make build
+./bin/featherci</code></pre>
+
+        <h3>Development Mode</h3>
+
+        <p>For local development without OAuth configuration:</p>
+
+        <pre><code>make dev</code></pre>
+
+        <p>This starts FeatherCI with the <code>--dev</code> flag, which skips OAuth and auto-logs in as an admin user.</p>
+
+        <h3>Verify Installation</h3>
+
+        <pre><code>curl http://localhost:8080/health
+# {"status":"ok"}
+
+curl http://localhost:8080/ready
+# {"status":"ready"}</code></pre>
+
+        <p>Then open <code>http://localhost:8080</code> in your browser.</p>
+
+        <hr>
+
+        <h2 id="configuration">Configuration</h2>
+
+        <p>FeatherCI is configured entirely through environment variables. You can also use a <code>.env</code> file in the working directory — environment variables take precedence.</p>
+
+        <h3>Required Settings</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_SECRET_KEY</code></td><td>32-byte base64-encoded encryption key. Generate with <code>featherci --generate-key</code></td></tr>
+            <tr><td><code>FEATHERCI_BASE_URL</code></td><td>Public URL for OAuth callbacks and webhooks (e.g. <code>https://ci.example.com</code>)</td></tr>
+            <tr><td><code>FEATHERCI_ADMINS</code></td><td>Comma-separated list of admin usernames</td></tr>
+          </tbody>
+        </table>
+
+        <p>At least one <a href="#oauth-providers">OAuth provider</a> must also be configured (unless running in dev mode).</p>
+
+        <h3>Optional Settings</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_BIND_ADDR</code></td><td><code>:8080</code></td><td>Address the HTTP server binds to</td></tr>
+            <tr><td><code>FEATHERCI_DATABASE_PATH</code></td><td><code>./featherci.db</code></td><td>Path to the SQLite database file</td></tr>
+            <tr><td><code>FEATHERCI_CACHE_PATH</code></td><td><code>./cache</code></td><td>Directory for build cache storage</td></tr>
+            <tr><td><code>FEATHERCI_WORKSPACE_PATH</code></td><td><code>./workspaces</code></td><td>Directory for build workspaces (cloned repos)</td></tr>
+            <tr><td><code>FEATHERCI_MODE</code></td><td><code>standalone</code></td><td>Operating mode: <code>standalone</code>, <code>master</code>, or <code>worker</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3 id="oauth-providers">OAuth Providers</h3>
+
+        <p>Configure at least one OAuth provider. For each provider, create an OAuth application with the callback URL:</p>
+
+        <pre><code>{FEATHERCI_BASE_URL}/auth/{provider}/callback</code></pre>
+
+        <p>For example: <code>https://ci.example.com/auth/github/callback</code></p>
+
+        <h4>GitHub</h4>
+        <ol>
+          <li>Go to <strong>Settings &rarr; Developer settings &rarr; OAuth Apps &rarr; New OAuth App</strong></li>
+          <li>Set the authorization callback URL to <code>{FEATHERCI_BASE_URL}/auth/github/callback</code></li>
+          <li>Copy the Client ID and Client Secret</li>
+        </ol>
+
+        <pre><code>FEATHERCI_GITHUB_CLIENT_ID=your_client_id
+FEATHERCI_GITHUB_CLIENT_SECRET=your_client_secret</code></pre>
+
+        <h4>GitLab</h4>
+        <p>Works with gitlab.com or self-hosted GitLab instances.</p>
+        <ol>
+          <li>Go to <strong>Preferences &rarr; Applications &rarr; New Application</strong></li>
+          <li>Set the redirect URI to <code>{FEATHERCI_BASE_URL}/auth/gitlab/callback</code></li>
+          <li>Select the <code>read_user</code> scope</li>
+          <li>Copy the Application ID and Secret</li>
+        </ol>
+
+        <pre><code>FEATHERCI_GITLAB_URL=https://gitlab.com          # or your self-hosted URL
+FEATHERCI_GITLAB_CLIENT_ID=your_application_id
+FEATHERCI_GITLAB_CLIENT_SECRET=your_secret</code></pre>
+
+        <h4>Gitea / Forgejo</h4>
+        <ol>
+          <li>Go to <strong>Site Administration &rarr; Applications &rarr; Create a new OAuth2 Application</strong></li>
+          <li>Set the redirect URI to <code>{FEATHERCI_BASE_URL}/auth/gitea/callback</code></li>
+          <li>Copy the Client ID and Client Secret</li>
+        </ol>
+
+        <pre><code>FEATHERCI_GITEA_URL=https://your-gitea-instance.com
+FEATHERCI_GITEA_CLIENT_ID=your_client_id
+FEATHERCI_GITEA_CLIENT_SECRET=your_client_secret</code></pre>
+
+        <blockquote><p><strong>Note:</strong> Gitea URL is required when Gitea/Forgejo OAuth is configured. There is no default.</p></blockquote>
+
+        <h3>Distributed Mode</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Required When</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_MODE</code></td><td>Always</td><td><code>standalone</code> (default), <code>master</code>, or <code>worker</code></td></tr>
+            <tr><td><code>FEATHERCI_WORKER_SECRET</code></td><td><code>master</code> or <code>worker</code> mode</td><td>Shared secret for worker authentication</td></tr>
+            <tr><td><code>FEATHERCI_MASTER_URL</code></td><td><code>worker</code> mode</td><td>URL of the master instance</td></tr>
+          </tbody>
+        </table>
+
+        <hr>
+
+        <h2 id="first-project">Your First Project</h2>
+
+        <h3>1. Log In</h3>
+
+        <p>Open FeatherCI in your browser and sign in with your configured OAuth provider. The first user listed in <code>FEATHERCI_ADMINS</code> is automatically an admin.</p>
+
+        <h3>2. Add a Project</h3>
+
+        <ol>
+          <li>Click <strong>Projects</strong> in the navigation</li>
+          <li>Click <strong>New Project</strong></li>
+          <li>Select a repository from the list (fetched from your Git provider)</li>
+          <li>Click <strong>Create</strong></li>
+        </ol>
+
+        <p>FeatherCI automatically registers a webhook on the repository so it receives push and pull request events.</p>
+
+        <h3>3. Create a Workflow File</h3>
+
+        <p>In your repository, create <code>.featherci/workflow.yml</code>:</p>
+
+        <pre><code>name: My First Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+steps:
+  - name: hello
+    image: alpine:latest
+    commands:
+      - echo "Hello from FeatherCI!"
+      - echo "Branch: $FEATHERCI_BRANCH"
+      - echo "Commit: $FEATHERCI_COMMIT"</code></pre>
+
+        <p>Commit and push this file to your repository.</p>
+
+        <h3>4. See Your Build</h3>
+
+        <p>After pushing, FeatherCI receives the webhook event and starts a build:</p>
+        <ol>
+          <li>Go to <strong>Projects &rarr; your-namespace/your-repo</strong></li>
+          <li>The build appears in the builds list with status <strong>running</strong></li>
+          <li>Click on the build to see the pipeline visualization and step logs</li>
+          <li>Logs stream in real-time as the step executes</li>
+        </ol>
+
+        <h3>5. Expand Your Workflow</h3>
+
+        <pre><code>name: CI Pipeline
+
+on:
+  push:
+  pull_request:
+
+steps:
+  - name: test
+    image: golang:1.22
+    commands:
+      - go test ./...
+
+  - name: lint
+    image: golang:1.22
+    commands:
+      - golangci-lint run
+
+  - name: build
+    image: golang:1.22
+    depends_on: [test, lint]
+    commands:
+      - go build -o app ./cmd/app</code></pre>
+
+        <p><code>test</code> and <code>lint</code> run in parallel. <code>build</code> waits for both to succeed.</p>
+
+        <h3>Next Steps</h3>
+
+        <ul>
+          <li><a href="guides.html">Workflow Syntax Guide</a> — Full walkthrough of all workflow features</li>
+          <li><a href="guides.html#secrets">Secrets</a> — Store and use encrypted credentials</li>
+          <li><a href="guides.html#notifications">Notifications</a> — Get notified on build results</li>
+        </ul>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 py-12 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-2">
+          <svg class="h-6 w-6 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+            <line x1="16" y1="8" x2="2" y2="22"/>
+            <line x1="17.5" y1="15" x2="9" y2="15"/>
+          </svg>
+          <span class="text-sm text-gray-500">FeatherCI</span>
+        </div>
+        <div class="flex items-center space-x-6 text-sm">
+          <a href="./" class="hover:text-white transition-colors">Docs</a>
+          <a href="https://github.com/featherci/featherci" class="hover:text-white transition-colors">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/docs.js"></script>
+</body>
+</html>

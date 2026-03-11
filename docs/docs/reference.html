@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reference - FeatherCI Docs</title>
+  <meta name="description" content="FeatherCI reference: environment variables, workflow YAML schema, and API endpoints.">
+  <link rel="icon" href="../images/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../css/docs.css">
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="bg-gray-900 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <div class="flex items-center">
+          <a href="../" class="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors">
+            <svg class="h-8 w-8 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+              <line x1="16" y1="8" x2="2" y2="22"/>
+              <line x1="17.5" y1="15" x2="9" y2="15"/>
+            </svg>
+            <span class="text-xl font-bold">FeatherCI</span>
+          </a>
+          <div class="hidden md:flex ml-10 items-center space-x-1">
+            <a href="./" class="text-white bg-gray-800 rounded-md px-3 py-2 text-sm font-medium">Docs</a>
+            <a href="https://github.com/featherci/featherci" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium transition-colors">GitHub</a>
+          </div>
+        </div>
+        <button id="nav-toggle" class="md:hidden text-gray-300 hover:text-white">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-700">
+      <div class="px-4 py-3 space-y-2">
+        <a href="./" class="block text-white text-sm font-medium">Docs</a>
+        <a href="https://github.com/featherci/featherci" class="block text-gray-300 text-sm font-medium">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="lg:flex lg:gap-8">
+
+      <!-- Sidebar -->
+      <button id="sidebar-toggle" class="lg:hidden mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Menu
+      </button>
+      <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
+      <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white lg:bg-transparent border-r lg:border-0 border-gray-200 overflow-y-auto -translate-x-full lg:translate-x-0 transition-transform lg:shrink-0 pt-4 px-4 lg:px-0">
+        <nav class="space-y-6 text-sm">
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Getting Started</h4>
+            <ul class="space-y-1">
+              <li><a href="./" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Installation</a></li>
+              <li><a href="./#configuration" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Configuration</a></li>
+              <li><a href="./#first-project" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">First Project</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Guides</h4>
+            <ul class="space-y-1">
+              <li><a href="guides.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Syntax</a></li>
+              <li><a href="guides.html#secrets" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Secrets</a></li>
+              <li><a href="guides.html#caching" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Caching</a></li>
+              <li><a href="guides.html#notifications" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Notifications</a></li>
+              <li><a href="guides.html#manual-approvals" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Manual Approvals</a></li>
+              <li><a href="guides.html#distributed-workers" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Distributed Workers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Reference</h4>
+            <ul class="space-y-1">
+              <li><a href="reference.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Environment Variables</a></li>
+              <li><a href="reference.html#workflow-schema" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Schema</a></li>
+              <li><a href="reference.html#api" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">API Endpoints</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Deployment</h4>
+            <ul class="space-y-1">
+              <li><a href="deployment.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Docker</a></li>
+              <li><a href="deployment.html#systemd" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Systemd</a></li>
+              <li><a href="deployment.html#kubernetes" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Kubernetes</a></li>
+            </ul>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <main class="min-w-0 flex-1 prose">
+
+        <h1>Reference</h1>
+
+        <!-- Environment Variables -->
+        <h2 id="environment-variables">Environment Variables</h2>
+
+        <p>Complete reference of all FeatherCI configuration variables. Values can be set as environment variables or in a <code>.env</code> file. Environment variables take precedence.</p>
+
+        <h3>Server</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_BIND_ADDR</code></td><td><code>:8080</code></td><td>Address and port the HTTP server binds to</td></tr>
+            <tr><td><code>FEATHERCI_BASE_URL</code></td><td><code>http://localhost:8080</code></td><td>Public URL for OAuth callbacks and webhook URLs. <strong>Required</strong> in production.</td></tr>
+            <tr><td><code>FEATHERCI_MODE</code></td><td><code>standalone</code></td><td>Operating mode: <code>standalone</code>, <code>master</code>, or <code>worker</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Security</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_SECRET_KEY</code></td><td>&mdash;</td><td><strong>Required.</strong> 32-byte base64-encoded key for AES-256-GCM encryption. Generate with <code>featherci --generate-key</code>.</td></tr>
+            <tr><td><code>FEATHERCI_ADMINS</code></td><td>&mdash;</td><td><strong>Required.</strong> Comma-separated list of usernames with admin privileges.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Database</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_DATABASE_PATH</code></td><td><code>./featherci.db</code></td><td>Path to the SQLite database file</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Storage</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_CACHE_PATH</code></td><td><code>./cache</code></td><td>Directory for build cache storage</td></tr>
+            <tr><td><code>FEATHERCI_WORKSPACE_PATH</code></td><td><code>./workspaces</code></td><td>Directory for build workspaces (cloned repositories)</td></tr>
+          </tbody>
+        </table>
+
+        <h3>GitHub OAuth</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_GITHUB_CLIENT_ID</code></td><td>&mdash;</td><td>GitHub OAuth application client ID</td></tr>
+            <tr><td><code>FEATHERCI_GITHUB_CLIENT_SECRET</code></td><td>&mdash;</td><td>GitHub OAuth application client secret</td></tr>
+          </tbody>
+        </table>
+
+        <p>Both must be set to enable GitHub authentication. Callback URL: <code>{BASE_URL}/auth/github/callback</code></p>
+
+        <h3>GitLab OAuth</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_GITLAB_URL</code></td><td><code>https://gitlab.com</code></td><td>GitLab instance base URL (for self-hosted)</td></tr>
+            <tr><td><code>FEATHERCI_GITLAB_CLIENT_ID</code></td><td>&mdash;</td><td>GitLab OAuth application ID</td></tr>
+            <tr><td><code>FEATHERCI_GITLAB_CLIENT_SECRET</code></td><td>&mdash;</td><td>GitLab OAuth application secret</td></tr>
+          </tbody>
+        </table>
+
+        <p>Both client ID and secret must be set to enable GitLab authentication. Callback URL: <code>{BASE_URL}/auth/gitlab/callback</code></p>
+
+        <h3>Gitea / Forgejo OAuth</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_GITEA_URL</code></td><td>&mdash;</td><td><strong>Required when Gitea auth is enabled.</strong> Base URL of your Gitea/Forgejo instance.</td></tr>
+            <tr><td><code>FEATHERCI_GITEA_CLIENT_ID</code></td><td>&mdash;</td><td>Gitea/Forgejo OAuth application client ID</td></tr>
+            <tr><td><code>FEATHERCI_GITEA_CLIENT_SECRET</code></td><td>&mdash;</td><td>Gitea/Forgejo OAuth application client secret</td></tr>
+          </tbody>
+        </table>
+
+        <p>All three must be set to enable Gitea authentication. Callback URL: <code>{BASE_URL}/auth/gitea/callback</code></p>
+
+        <h3>Distributed Mode</h3>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_WORKER_SECRET</code></td><td>&mdash;</td><td><strong>Required for <code>master</code> and <code>worker</code> modes.</strong> Shared secret for worker authentication.</td></tr>
+            <tr><td><code>FEATHERCI_MASTER_URL</code></td><td>&mdash;</td><td><strong>Required for <code>worker</code> mode.</strong> URL of the master instance.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Validation Rules</h3>
+
+        <ul>
+          <li><code>FEATHERCI_SECRET_KEY</code> must decode to exactly 32 bytes</li>
+          <li><code>FEATHERCI_MODE</code> must be one of: <code>standalone</code>, <code>master</code>, <code>worker</code></li>
+          <li>At least one OAuth provider must be fully configured (unless running with <code>--dev</code>)</li>
+          <li>At least one admin username must be specified (unless running with <code>--dev</code>)</li>
+          <li><code>FEATHERCI_MASTER_URL</code> is required when mode is <code>worker</code></li>
+          <li><code>FEATHERCI_WORKER_SECRET</code> is required when mode is <code>master</code> or <code>worker</code></li>
+          <li><code>FEATHERCI_GITEA_URL</code> is required when Gitea OAuth credentials are provided</li>
+        </ul>
+
+        <hr>
+
+        <!-- Workflow Schema -->
+        <h2 id="workflow-schema">Workflow YAML Schema</h2>
+
+        <p>Complete schema for <code>.featherci/workflow.yml</code> files.</p>
+
+        <h3>Top-Level Fields</h3>
+
+        <pre><code>name: string        # Display name of the workflow (required)
+on: TriggerConfig   # When the workflow should trigger (required)
+steps: []Step       # Steps to execute (required)</code></pre>
+
+        <h3>Trigger Configuration</h3>
+
+        <pre><code>on:
+  push:
+    branches: [string]   # Branch glob patterns (optional, default: all)
+    tags: [string]       # Tag glob patterns (optional)
+  pull_request:
+    branches: [string]   # Target branch patterns (optional, default: all)</code></pre>
+
+        <p>An empty trigger enables it for all events of that type:</p>
+
+        <pre><code>on:
+  push:           # Triggers on all pushes
+  pull_request:   # Triggers on all PRs</code></pre>
+
+        <h3>Step Fields</h3>
+
+        <table>
+          <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>name</code></td><td>string</td><td>Yes</td><td>&mdash;</td><td>Unique step identifier</td></tr>
+            <tr><td><code>type</code></td><td>string</td><td>No</td><td><code>""</code> (command)</td><td>Step type: <code>""</code> for command, <code>"approval"</code> for manual gate</td></tr>
+            <tr><td><code>image</code></td><td>string</td><td>Yes*</td><td>&mdash;</td><td>Docker image. *Required for command steps, ignored for approval.</td></tr>
+            <tr><td><code>commands</code></td><td>[]string</td><td>No</td><td>&mdash;</td><td>Shell commands to execute in the container</td></tr>
+            <tr><td><code>depends_on</code></td><td>[]string</td><td>No</td><td>&mdash;</td><td>Step names that must complete first</td></tr>
+            <tr><td><code>env</code></td><td>map</td><td>No</td><td>&mdash;</td><td>Environment variables. Use <code>$SECRET_NAME</code> to reference secrets.</td></tr>
+            <tr><td><code>working_dir</code></td><td>string</td><td>No</td><td>Repo root</td><td>Working directory for commands</td></tr>
+            <tr><td><code>timeout_minutes</code></td><td>int</td><td>No</td><td><code>60</code></td><td>Maximum execution time in minutes</td></tr>
+            <tr><td><code>if</code></td><td>string</td><td>No</td><td>&mdash;</td><td>Condition expression for step execution</td></tr>
+            <tr><td><code>continue_on_error</code></td><td>bool</td><td>No</td><td><code>false</code></td><td>Continue workflow even if this step fails</td></tr>
+            <tr><td><code>cache</code></td><td>object</td><td>No</td><td>&mdash;</td><td>Build cache configuration</td></tr>
+            <tr><td><code>secrets</code></td><td>[]string</td><td>No</td><td>&mdash;</td><td>Secret names to inject as env vars</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Cache Configuration</h3>
+
+        <table>
+          <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>key</code></td><td>string</td><td>Yes</td><td>Cache key template. Supports <code>{{ checksum "file" }}</code> and <code>{{ .Branch }}</code>.</td></tr>
+            <tr><td><code>paths</code></td><td>[]string</td><td>Yes</td><td>Directories to cache between builds</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Condition Expressions</h3>
+
+        <p>The <code>if</code> field accepts expressions in the format: <code>variable operator "value"</code></p>
+
+        <p><strong>Variables:</strong> <code>branch</code></p>
+
+        <table>
+          <thead><tr><th>Operator</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>==</code></td><td>Exact match</td></tr>
+            <tr><td><code>!=</code></td><td>Not equal</td></tr>
+            <tr><td><code>=~</code></td><td>Glob pattern match</td></tr>
+            <tr><td><code>!~</code></td><td>Glob pattern not match</td></tr>
+          </tbody>
+        </table>
+
+        <p><strong>Examples:</strong></p>
+
+        <pre><code>if: branch == "main"
+if: branch != "develop"
+if: branch =~ "release/*"
+if: branch !~ "feature/*"</code></pre>
+
+        <h3>Complete Example</h3>
+
+        <pre><code>name: Production Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+    tags: [v*]
+  pull_request:
+    branches: [main]
+
+steps:
+  - name: test
+    image: golang:1.22
+    timeout_minutes: 30
+    cache:
+      key: go-{{ checksum "go.sum" }}
+      paths:
+        - /go/pkg/mod
+    commands:
+      - go test -v -race ./...
+
+  - name: lint
+    image: golang:1.22
+    continue_on_error: true
+    commands:
+      - golangci-lint run
+
+  - name: build
+    image: golang:1.22
+    depends_on: [test, lint]
+    commands:
+      - CGO_ENABLED=0 go build -o app ./cmd/app
+
+  - name: approve-deploy
+    type: approval
+    depends_on: [build]
+
+  - name: deploy
+    image: alpine:latest
+    depends_on: [approve-deploy]
+    if: branch == "main"
+    secrets: [DEPLOY_KEY]
+    env:
+      DEPLOY_KEY: $DEPLOY_KEY
+    commands:
+      - ./deploy.sh production</code></pre>
+
+        <hr>
+
+        <!-- API -->
+        <h2 id="api">API Endpoints</h2>
+
+        <p>FeatherCI exposes a small set of public HTTP endpoints. The web UI is server-rendered HTML &mdash; there is no general-purpose REST API at this time.</p>
+
+        <h3>Health Check</h3>
+
+        <pre><code>GET /health</code></pre>
+
+        <p>Returns <code>200 OK</code> with a JSON body when the server is running:</p>
+
+        <pre><code>{"status": "ok"}</code></pre>
+
+        <p>No authentication required. Use this for load balancer health checks.</p>
+
+        <h3>Readiness Check</h3>
+
+        <pre><code>GET /ready</code></pre>
+
+        <p>Returns <code>200 OK</code> when the server is ready to accept traffic (database is reachable):</p>
+
+        <pre><code>{"status": "ready"}</code></pre>
+
+        <p>Returns <code>503 Service Unavailable</code> if the database is not reachable:</p>
+
+        <pre><code>{"status": "not ready", "error": "database unavailable"}</code></pre>
+
+        <p>No authentication required. Use this for Kubernetes readiness probes.</p>
+
+        <h3>Webhook Endpoints</h3>
+
+        <p>These endpoints receive events from Git providers. They are registered automatically when you add a project.</p>
+
+        <pre><code>POST /webhooks/github
+POST /webhooks/gitlab
+POST /webhooks/gitea</code></pre>
+
+        <p>Each endpoint validates the request signature using the provider-specific mechanism (GitHub HMAC, GitLab token, Gitea HMAC). Unsigned or incorrectly signed requests are rejected.</p>
+
+        <h3>Worker API</h3>
+
+        <p>The worker API is used internally for distributed mode communication. These endpoints are authenticated with <code>FEATHERCI_WORKER_SECRET</code>.</p>
+
+        <pre><code>GET  /api/worker/jobs             # Poll for available jobs
+POST /api/worker/jobs/{id}/status  # Report job status
+POST /api/worker/heartbeat        # Worker heartbeat</code></pre>
+
+        <blockquote><p><strong>Warning:</strong> The worker API is internal and not yet stable. It may change between versions.</p></blockquote>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 py-12 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-2">
+          <svg class="h-6 w-6 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+            <line x1="16" y1="8" x2="2" y2="22"/>
+            <line x1="17.5" y1="15" x2="9" y2="15"/>
+          </svg>
+          <span class="text-sm text-gray-500">FeatherCI</span>
+        </div>
+        <div class="flex items-center space-x-6 text-sm">
+          <a href="./" class="hover:text-white transition-colors">Docs</a>
+          <a href="https://github.com/featherci/featherci" class="hover:text-white transition-colors">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/docs.js"></script>
+</body>
+</html>

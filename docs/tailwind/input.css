@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+@source "../**/*.html";
+
+@theme {
+  --color-feather-50: #f0f9ff;
+  --color-feather-100: #e0f2fe;
+  --color-feather-200: #bae6fd;
+  --color-feather-300: #7dd3fc;
+  --color-feather-400: #38bdf8;
+  --color-feather-500: #0ea5e9;
+  --color-feather-600: #0284c7;
+  --color-feather-700: #0369a1;
+  --color-feather-800: #075985;
+  --color-feather-900: #0c4a6e;
+  --color-feather-950: #082f49;
+}
+
+/* Buttons */
+@utility btn {
+  @apply px-4 py-2 rounded-md font-medium transition-colors focus:outline-hidden focus:ring-2 focus:ring-offset-2 inline-flex items-center justify-center;
+}
+@utility btn-primary {
+  @apply bg-feather-600 text-white hover:bg-feather-700 focus:ring-feather-500;
+}
+@utility btn-secondary {
+  @apply bg-gray-800 text-gray-100 hover:bg-gray-700 focus:ring-gray-500 border border-gray-600;
+}
+@utility btn-lg {
+  @apply px-6 py-3 text-lg;
+}
+
+/* Cards */
+@utility card {
+  @apply bg-white shadow-sm rounded-lg;
+}
+
+/* Code blocks */
+@utility code-block {
+  @apply font-mono text-sm bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto;
+}
+
+/* Prose typography for docs content */
+@layer components {
+  .prose {
+    @apply text-gray-700 leading-relaxed;
+  }
+  .prose h1 {
+    @apply text-3xl font-bold text-gray-900 mt-0 mb-6 pb-3 border-b border-gray-200;
+  }
+  .prose h2 {
+    @apply text-2xl font-bold text-gray-900 mt-12 mb-4;
+  }
+  .prose h3 {
+    @apply text-xl font-semibold text-gray-900 mt-8 mb-3;
+  }
+  .prose h4 {
+    @apply text-lg font-semibold text-gray-900 mt-6 mb-2;
+  }
+  .prose p {
+    @apply mb-4;
+  }
+  .prose a {
+    @apply text-feather-600 hover:text-feather-700 underline decoration-feather-300 hover:decoration-feather-500 transition-colors;
+  }
+  .prose strong {
+    @apply font-semibold text-gray-900;
+  }
+  .prose code {
+    @apply font-mono text-sm bg-gray-100 rounded px-1.5 py-0.5 text-feather-800;
+  }
+  .prose pre {
+    @apply bg-gray-900 text-gray-100 rounded-lg p-4 overflow-x-auto mb-6 mt-2;
+  }
+  .prose pre code {
+    @apply bg-transparent text-gray-100 p-0 rounded-none text-sm;
+  }
+  .prose ul {
+    @apply list-disc pl-6 mb-4 space-y-1;
+  }
+  .prose ol {
+    @apply list-decimal pl-6 mb-4 space-y-1;
+  }
+  .prose li {
+    @apply text-gray-700;
+  }
+  .prose blockquote {
+    @apply border-l-4 border-feather-300 pl-4 py-1 my-4 text-gray-600 bg-feather-50 rounded-r-lg pr-4;
+  }
+  .prose hr {
+    @apply border-gray-200 my-8;
+  }
+  .prose table {
+    @apply w-full border-collapse mb-6 text-sm;
+  }
+  .prose thead {
+    @apply bg-gray-50;
+  }
+  .prose th {
+    @apply text-left px-4 py-3 font-semibold text-gray-700 border border-gray-200;
+  }
+  .prose td {
+    @apply px-4 py-3 border border-gray-200 text-gray-700;
+  }
+  .prose td code, .prose th code {
+    @apply text-xs;
+  }
+  .prose tbody tr:hover {
+    @apply bg-gray-50;
+  }
+}

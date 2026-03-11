@@ -19,7 +19,8 @@
       "Bash(docker images:*)",
       "Bash(docker rmi:*)",
       "Bash(docker rm:*)",
-      "Bash(go run:*)"
+      "Bash(go run:*)",
+      "Bash(which hugo:*)"
     ]
   }
 }

@@ -43,7 +43,7 @@ endif
 # HTMX version
 HTMX_VERSION := 1.9.10
 
-.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets docker-build docker-run docker-stop docker-logs release install
+.PHONY: all build dev test lint fmt clean css css-watch tidy help generate-key tailwind-download htmx-download assets docker-build docker-run docker-stop docker-logs release install docs-css docs-css-watch docs-serve
 
 all: build
 
@@ -167,6 +167,18 @@ release: assets
 ## install: Install binary to /usr/local/bin
 install: build
 	sudo cp $(BUILD_DIR)/$(BINARY_NAME) /usr/local/bin/
+
+## docs-css: Compile Tailwind CSS for docs site
+docs-css: tailwind-download
+	@$(TAILWIND_CLI) -i docs/tailwind/input.css -o docs/css/docs.css --minify
+
+## docs-css-watch: Watch and recompile docs CSS on changes
+docs-css-watch: tailwind-download
+	$(TAILWIND_CLI) -i docs/tailwind/input.css -o docs/css/docs.css --watch
+
+## docs-serve: Serve docs site locally
+docs-serve: docs-css
+	cd docs && python3 -m http.server 3000
 
 ## help: Show this help message
 help:

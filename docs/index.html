@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FeatherCI - Lightweight Self-Hosted CI/CD</title>
+  <meta name="description" content="A lightweight, self-hosted CI/CD system. Single binary, Docker-based builds, visual pipelines, zero external dependencies.">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/docs.css">
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="bg-gray-900 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <a href="/docs/" class="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors">
+          <svg class="h-8 w-8 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+            <line x1="16" y1="8" x2="2" y2="22"/>
+            <line x1="17.5" y1="15" x2="9" y2="15"/>
+          </svg>
+          <span class="text-xl font-bold">FeatherCI</span>
+        </a>
+        <div class="hidden md:flex items-center space-x-6">
+          <a href="docs/" class="text-gray-300 hover:text-white text-sm font-medium transition-colors">Docs</a>
+          <a href="https://github.com/featherci/featherci" class="text-gray-300 hover:text-white text-sm font-medium transition-colors">GitHub</a>
+        </div>
+        <button id="nav-toggle" class="md:hidden text-gray-300 hover:text-white">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-700">
+      <div class="px-4 py-3 space-y-2">
+        <a href="docs/" class="block text-gray-300 hover:text-white text-sm font-medium">Docs</a>
+        <a href="https://github.com/featherci/featherci" class="block text-gray-300 hover:text-white text-sm font-medium">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="bg-gray-900 text-white overflow-hidden">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-24 pb-0">
+      <div class="text-center mb-12">
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
+          CI/CD that fits in<br class="hidden sm:inline"> a single binary
+        </h1>
+        <p class="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto mb-8">
+          Lightweight, self-hosted continuous integration. Docker-based builds, visual pipelines, encrypted secrets — zero external dependencies.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+          <a href="docs/" class="btn btn-primary btn-lg">Get Started</a>
+          <a href="https://github.com/featherci/featherci" class="btn btn-secondary btn-lg">
+            <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
+          </a>
+        </div>
+      </div>
+
+      <!-- Hero Screenshot: Build View with Pipeline Graph -->
+      <div class="max-w-5xl mx-auto">
+        <div class="rounded-t-xl border border-gray-700 border-b-0 overflow-hidden shadow-2xl">
+          <!-- Browser chrome -->
+          <div class="bg-gray-800 px-4 py-3 flex items-center gap-2">
+            <div class="flex gap-1.5">
+              <div class="w-3 h-3 rounded-full bg-red-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+              <div class="w-3 h-3 rounded-full bg-green-500/80"></div>
+            </div>
+            <div class="flex-1 mx-2">
+              <div class="bg-gray-700 rounded-md px-3 py-1 text-xs text-gray-400 max-w-md mx-auto text-center">ci.example.com/projects/acme/web-app/builds/42</div>
+            </div>
+          </div>
+
+          <!-- App chrome: nav bar -->
+          <div class="bg-gray-900 px-4 py-2.5 flex items-center justify-between border-b border-gray-800">
+            <div class="flex items-center gap-2">
+              <svg class="h-6 w-6 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/><line x1="16" y1="8" x2="2" y2="22"/><line x1="17.5" y1="15" x2="9" y2="15"/></svg>
+              <span class="text-white text-sm font-bold">FeatherCI</span>
+              <span class="text-gray-500 text-sm ml-4">Projects</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-full bg-feather-600 flex items-center justify-center text-white text-xs font-medium">A</div>
+              <span class="text-gray-400 text-xs hidden sm:inline">admin</span>
+            </div>
+          </div>
+
+          <!-- Build page content -->
+          <div class="bg-gray-50 px-6 py-5">
+            <!-- Breadcrumb + header -->
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1.5">
+                  <span class="text-gray-500">Projects</span>
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="text-gray-500">acme/web-app</span>
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="text-gray-500">Builds</span>
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                  <span class="text-gray-700">#42</span>
+                </div>
+                <div class="flex items-center gap-2.5">
+                  <span class="text-lg font-bold text-gray-900">Build #42</span>
+                  <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">success</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Build info card -->
+            <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div><span class="text-gray-400 block">Commit</span><span class="font-mono text-gray-800">a3f8c21d</span></div>
+                <div><span class="text-gray-400 block">Branch</span><span class="font-mono text-gray-800">main</span></div>
+                <div><span class="text-gray-400 block">Author</span><span class="text-gray-800">alice</span></div>
+                <div><span class="text-gray-400 block">Duration</span><span class="text-gray-800">2m 14s</span></div>
+              </div>
+              <div class="mt-3 pt-3 border-t border-gray-100 text-xs">
+                <span class="text-gray-400">Message</span>
+                <span class="text-gray-800 ml-1">feat: add user avatar upload endpoint</span>
+              </div>
+            </div>
+
+            <!-- Pipeline DAG (SVG mockup) -->
+            <div class="bg-white rounded-lg shadow-sm">
+              <div class="px-4 py-3 border-b border-gray-200">
+                <span class="text-sm font-medium text-gray-900">Steps</span>
+              </div>
+              <div class="bg-gray-50 rounded-b-lg p-4 overflow-x-auto">
+                <svg width="720" height="110" xmlns="http://www.w3.org/2000/svg" class="mx-auto block">
+                  <!-- Edges -->
+                  <path d="M 175 35 C 200 35, 210 25, 235 25" stroke="#D1D5DB" stroke-width="2" fill="none"/>
+                  <path d="M 175 75 C 200 75, 210 25, 235 25" stroke="#D1D5DB" stroke-width="2" fill="none"/>
+                  <path d="M 385 25 C 410 25, 410 50, 435 50" stroke="#D1D5DB" stroke-width="2" fill="none"/>
+                  <path d="M 570 50 C 595 50, 595 50, 620 50" stroke="#D1D5DB" stroke-width="2" fill="none"/>
+
+                  <!-- Dots -->
+                  <circle cx="175" cy="35" r="4" fill="#D1D5DB"/>
+                  <circle cx="175" cy="75" r="4" fill="#D1D5DB"/>
+                  <circle cx="235" cy="25" r="4" fill="#D1D5DB"/>
+                  <circle cx="385" cy="25" r="4" fill="#D1D5DB"/>
+                  <circle cx="435" cy="50" r="4" fill="#D1D5DB"/>
+                  <circle cx="570" cy="50" r="4" fill="#D1D5DB"/>
+                  <circle cx="620" cy="50" r="4" fill="#D1D5DB"/>
+
+                  <!-- Group 1: test + lint (parallel) -->
+                  <rect x="0" y="10" width="170" height="80" rx="12" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+                  <!-- test -->
+                  <circle cx="20" cy="35" r="10" fill="#22c55e" opacity="0.15"/>
+                  <polyline points="16,35 19,39 25,31" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="36" y="39" font-family="system-ui, sans-serif" font-size="13" fill="#111827">test</text>
+                  <text x="154" y="39" font-family="system-ui, sans-serif" font-size="11" fill="#9ca3af" text-anchor="end">48s</text>
+                  <!-- lint -->
+                  <circle cx="20" cy="75" r="10" fill="#22c55e" opacity="0.15"/>
+                  <polyline points="16,75 19,79 25,71" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="36" y="79" font-family="system-ui, sans-serif" font-size="13" fill="#111827">lint</text>
+                  <text x="154" y="79" font-family="system-ui, sans-serif" font-size="11" fill="#9ca3af" text-anchor="end">12s</text>
+
+                  <!-- Group 2: build -->
+                  <rect x="240" y="0" width="140" height="50" rx="12" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+                  <circle cx="260" cy="25" r="10" fill="#22c55e" opacity="0.15"/>
+                  <polyline points="256,25 259,29 265,21" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="276" y="29" font-family="system-ui, sans-serif" font-size="13" fill="#111827">build</text>
+                  <text x="364" y="29" font-family="system-ui, sans-serif" font-size="11" fill="#9ca3af" text-anchor="end">34s</text>
+
+                  <!-- Group 3: deploy-approval -->
+                  <rect x="440" y="25" width="125" height="50" rx="12" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+                  <circle cx="460" cy="50" r="10" fill="#22c55e" opacity="0.15"/>
+                  <polyline points="456,50 459,54 465,46" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="476" y="54" font-family="system-ui, sans-serif" font-size="13" fill="#111827">approval</text>
+
+                  <!-- Group 4: deploy -->
+                  <rect x="625" y="25" width="90" height="50" rx="12" fill="white" stroke="#E5E7EB" stroke-width="1"/>
+                  <circle cx="645" cy="50" r="10" fill="#22c55e" opacity="0.15"/>
+                  <polyline points="641,50 644,54 650,46" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <text x="661" y="54" font-family="system-ui, sans-serif" font-size="13" fill="#111827">deploy</text>
+                </svg>
+              </div>
+
+              <!-- Step details (expandable rows) -->
+              <div class="divide-y divide-gray-200 text-xs">
+                <div>
+                  <div class="px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <svg class="w-3.5 h-3.5 text-gray-400 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                      <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                      <div><span class="font-medium text-gray-900">test</span> <span class="text-gray-400 ml-1">golang:1.22</span></div>
+                    </div>
+                    <span class="text-gray-400">48s</span>
+                  </div>
+                  <!-- Log output -->
+                  <div class="mx-4 mb-3 bg-gray-900 rounded-lg p-3 font-mono text-[11px] text-gray-300 leading-relaxed max-h-28 overflow-hidden">
+                    <div><span class="text-gray-600 select-none mr-2">1</span>=== RUN   TestUserCreate</div>
+                    <div><span class="text-gray-600 select-none mr-2">2</span>--- PASS: TestUserCreate (0.02s)</div>
+                    <div><span class="text-gray-600 select-none mr-2">3</span>=== RUN   TestUserUpdate</div>
+                    <div><span class="text-gray-600 select-none mr-2">4</span>--- PASS: TestUserUpdate (0.01s)</div>
+                    <div><span class="text-gray-600 select-none mr-2">5</span>=== RUN   TestAvatarUpload</div>
+                    <div><span class="text-gray-600 select-none mr-2">6</span>--- PASS: TestAvatarUpload (0.03s)</div>
+                    <div><span class="text-gray-600 select-none mr-2">7</span>PASS</div>
+                    <div><span class="text-gray-600 select-none mr-2">8</span>ok  	github.com/acme/web-app/...	0.48s</div>
+                  </div>
+                </div>
+                <div class="px-4 py-3 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <div><span class="font-medium text-gray-900">lint</span> <span class="text-gray-400 ml-1">golang:1.22</span></div>
+                  </div>
+                  <span class="text-gray-400">12s</span>
+                </div>
+                <div class="px-4 py-3 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <div><span class="font-medium text-gray-900">build</span> <span class="text-gray-400 ml-1">golang:1.22</span></div>
+                  </div>
+                  <span class="text-gray-400">34s</span>
+                </div>
+                <div class="px-4 py-3 flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <div><span class="font-medium text-gray-900">deploy-approval</span> <span class="text-green-600 ml-1">Approved by alice</span></div>
+                  </div>
+                  <span class="text-gray-400">&mdash;</span>
+                </div>
+                <div class="px-4 py-3 flex items-center justify-between rounded-b-lg">
+                  <div class="flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                    <div><span class="font-medium text-gray-900">deploy</span> <span class="text-gray-400 ml-1">alpine:latest</span> <span class="text-indigo-500 ml-1">if: branch == "main"</span></div>
+                  </div>
+                  <span class="text-gray-400">40s</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="py-20 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-16">
+        <h2 class="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">Why FeatherCI?</h2>
+        <p class="text-lg text-gray-500 max-w-2xl mx-auto">Most CI systems are massive SaaS platforms or complex self-hosted stacks. FeatherCI takes a different approach.</p>
+      </div>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-feather-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Ship a Single Binary</h3>
+          <p class="text-gray-600 text-sm">Everything compiled into one executable — web UI, build engine, SQLite database. Download, set a few env vars, run.</p>
+        </div>
+
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-feather-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Build in Containers</h3>
+          <p class="text-gray-600 text-sm">Every step runs in an isolated Docker container. Use any image — <code class="text-xs bg-gray-100 px-1 rounded">golang:1.22</code>, <code class="text-xs bg-gray-100 px-1 rounded">node:20</code>, <code class="text-xs bg-gray-100 px-1 rounded">python:3.12</code>.</p>
+        </div>
+
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-feather-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">See Your Pipeline</h3>
+          <p class="text-gray-600 text-sm">Visual DAG rendering of build steps. See dependencies, parallelism, and approval gates at a glance.</p>
+        </div>
+
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-feather-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Multi-Provider Auth</h3>
+          <p class="text-gray-600 text-sm">Sign in with GitHub, GitLab, or Gitea/Forgejo. Self-hosted instances fully supported.</p>
+        </div>
+
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-feather-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Gate Deployments</h3>
+          <p class="text-gray-600 text-sm">Add <code class="text-xs bg-gray-100 px-1 rounded">type: approval</code> steps for human sign-off. Build promotion workflows across environments.</p>
+        </div>
+
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="w-10 h-10 rounded-lg bg-feather-100 flex items-center justify-center mb-4">
+            <svg class="w-5 h-5 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Scale When Ready</h3>
+          <p class="text-gray-600 text-sm">Start standalone. Add worker nodes with one env var change when you need more capacity. No architecture migration.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Dashboard Screenshot -->
+  <section class="py-20">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="lg:flex lg:items-center lg:gap-12">
+        <div class="lg:w-5/12 mb-10 lg:mb-0">
+          <h2 class="text-3xl font-bold text-gray-900 mb-4">Everything at a glance</h2>
+          <p class="text-lg text-gray-500 mb-6">Your dashboard shows build activity across all projects. Stats, recent builds, and quick actions — all on one page.</p>
+          <ul class="space-y-3 text-sm text-gray-600">
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-feather-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Project count, success rate, and active builds
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-feather-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Recent builds with status, branch, and commit info
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-feather-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              One-click project creation from your Git provider
+            </li>
+          </ul>
+        </div>
+        <div class="lg:w-7/12">
+          <div class="rounded-xl border border-gray-200 overflow-hidden shadow-lg">
+            <!-- Browser chrome -->
+            <div class="bg-gray-100 px-4 py-2.5 flex items-center gap-2 border-b border-gray-200">
+              <div class="flex gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+              </div>
+              <div class="flex-1 mx-2">
+                <div class="bg-white rounded px-3 py-1 text-xs text-gray-400 max-w-xs mx-auto text-center border border-gray-200">ci.example.com</div>
+              </div>
+            </div>
+            <!-- Dashboard content -->
+            <div class="bg-white p-5">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <h3 class="text-base font-bold text-gray-900">Welcome back, alice!</h3>
+                  <p class="text-xs text-gray-500">Here's what's happening with your projects</p>
+                </div>
+                <span class="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-feather-600 text-white rounded">+ New Project</span>
+              </div>
+
+              <!-- Stats cards -->
+              <div class="grid grid-cols-4 gap-3 mb-5">
+                <div class="bg-white border border-gray-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded bg-feather-50 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-500">Projects</p>
+                      <p class="text-lg font-semibold text-gray-900 leading-tight">5</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded bg-green-50 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-500">Successful</p>
+                      <p class="text-lg font-semibold text-gray-900 leading-tight">128</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded bg-red-50 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-500">Failed</p>
+                      <p class="text-lg font-semibold text-gray-900 leading-tight">7</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-500">Running</p>
+                      <p class="text-lg font-semibold text-gray-900 leading-tight">2</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Recent builds table -->
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                  <span class="text-sm font-medium text-gray-900">Recent Builds</span>
+                </div>
+                <table class="w-full text-xs">
+                  <thead><tr class="bg-gray-50 border-b border-gray-200"><th class="text-left px-3 py-2 text-gray-500 font-medium">Status</th><th class="text-left px-3 py-2 text-gray-500 font-medium">Build</th><th class="text-left px-3 py-2 text-gray-500 font-medium">Commit</th><th class="text-left px-3 py-2 text-gray-500 font-medium hidden sm:table-cell">Branch</th><th class="text-left px-3 py-2 text-gray-500 font-medium hidden sm:table-cell">Duration</th></tr></thead>
+                  <tbody>
+                    <tr class="border-b border-gray-100"><td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">success</span></td><td class="px-3 py-2 font-medium text-feather-600">acme/web-app #42</td><td class="px-3 py-2 text-gray-600">feat: add user avatar upload</td><td class="px-3 py-2 font-mono text-gray-500 hidden sm:table-cell">main</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">2m 14s</td></tr>
+                    <tr class="border-b border-gray-100"><td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">running</span></td><td class="px-3 py-2 font-medium text-feather-600">acme/api #87</td><td class="px-3 py-2 text-gray-600">fix: rate limiter edge case</td><td class="px-3 py-2 font-mono text-gray-500 hidden sm:table-cell">fix/rate-limit</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">-</td></tr>
+                    <tr class="border-b border-gray-100"><td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800">failure</span></td><td class="px-3 py-2 font-medium text-feather-600">acme/web-app #41</td><td class="px-3 py-2 text-gray-600">refactor: auth middleware</td><td class="px-3 py-2 font-mono text-gray-500 hidden sm:table-cell">develop</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">1m 02s</td></tr>
+                    <tr><td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">success</span></td><td class="px-3 py-2 font-medium text-feather-600">acme/docs #15</td><td class="px-3 py-2 text-gray-600">docs: update API reference</td><td class="px-3 py-2 font-mono text-gray-500 hidden sm:table-cell">main</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">28s</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Project Screenshot -->
+  <section class="py-20 bg-gray-50">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="lg:flex lg:items-center lg:gap-12 lg:flex-row-reverse">
+        <div class="lg:w-5/12 mb-10 lg:mb-0">
+          <h2 class="text-3xl font-bold text-gray-900 mb-4">Project overview</h2>
+          <p class="text-lg text-gray-500 mb-6">Each project gets its own page with build stats, history, and quick actions. Trigger builds manually or let webhooks handle it.</p>
+          <ul class="space-y-3 text-sm text-gray-600">
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-feather-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Total builds, success rate, and average duration
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-feather-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Manual trigger, settings, secrets, and notifications
+            </li>
+            <li class="flex items-center gap-2">
+              <svg class="w-4 h-4 text-feather-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+              Automatic webhook registration on project creation
+            </li>
+          </ul>
+        </div>
+        <div class="lg:w-7/12">
+          <div class="rounded-xl border border-gray-200 overflow-hidden shadow-lg">
+            <!-- Browser chrome -->
+            <div class="bg-gray-100 px-4 py-2.5 flex items-center gap-2 border-b border-gray-200">
+              <div class="flex gap-1.5">
+                <div class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+                <div class="w-2.5 h-2.5 rounded-full bg-gray-300"></div>
+              </div>
+              <div class="flex-1 mx-2">
+                <div class="bg-white rounded px-3 py-1 text-xs text-gray-400 max-w-xs mx-auto text-center border border-gray-200">ci.example.com/projects/acme/web-app</div>
+              </div>
+            </div>
+            <!-- Project page -->
+            <div class="bg-white p-5">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <div class="flex items-center gap-1.5 text-xs text-gray-400 mb-1">
+                    <span>Projects</span>
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <span class="text-gray-700">web-app</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd"/></svg>
+                    <span class="text-base font-bold text-gray-900">acme/web-app</span>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-0.5">Default branch: <code class="bg-gray-100 px-1 rounded text-[10px]">main</code></p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded">Settings</span>
+                  <span class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium bg-feather-600 text-white rounded">Trigger Build</span>
+                </div>
+              </div>
+
+              <!-- Stats cards -->
+              <div class="grid grid-cols-3 gap-3 mb-5">
+                <div class="bg-white border border-gray-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded bg-feather-50 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-feather-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-500">Total Builds</p>
+                      <p class="text-lg font-semibold text-gray-900 leading-tight">42</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded bg-green-50 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-500">Success Rate</p>
+                      <p class="text-lg font-semibold text-gray-900 leading-tight">93%</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-lg p-3">
+                  <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center">
+                      <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </div>
+                    <div>
+                      <p class="text-[10px] text-gray-500">Avg Duration</p>
+                      <p class="text-lg font-semibold text-gray-900 leading-tight">2m 08s</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Build list -->
+              <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="px-4 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                  <span class="text-sm font-medium text-gray-900">Recent Builds</span>
+                  <span class="text-xs text-feather-600">View all</span>
+                </div>
+                <table class="w-full text-xs">
+                  <thead><tr class="bg-gray-50 border-b border-gray-200"><th class="text-left px-3 py-2 text-gray-500 font-medium">#</th><th class="text-left px-3 py-2 text-gray-500 font-medium">Status</th><th class="text-left px-3 py-2 text-gray-500 font-medium">Branch</th><th class="text-left px-3 py-2 text-gray-500 font-medium">Commit</th><th class="text-left px-3 py-2 text-gray-500 font-medium hidden sm:table-cell">Duration</th><th class="text-left px-3 py-2 text-gray-500 font-medium hidden sm:table-cell">Created</th></tr></thead>
+                  <tbody>
+                    <tr class="border-b border-gray-100"><td class="px-3 py-2 font-medium text-feather-600">#42</td><td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">success</span></td><td class="px-3 py-2 font-mono text-gray-600">main</td><td class="px-3 py-2 font-mono text-gray-500">a3f8c21d</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">2m 14s</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">2 min ago</td></tr>
+                    <tr class="border-b border-gray-100"><td class="px-3 py-2 font-medium text-feather-600">#41</td><td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-red-100 text-red-800">failure</span></td><td class="px-3 py-2 font-mono text-gray-600">develop</td><td class="px-3 py-2 font-mono text-gray-500">e7b2a91f</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">1m 02s</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">25 min ago</td></tr>
+                    <tr><td class="px-3 py-2 font-medium text-feather-600">#40</td><td class="px-3 py-2"><span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800">success</span></td><td class="px-3 py-2 font-mono text-gray-600">main</td><td class="px-3 py-2 font-mono text-gray-500">1c4d5e8a</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">1m 58s</td><td class="px-3 py-2 text-gray-500 hidden sm:table-cell">1 hour ago</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Quick Start Terminal -->
+  <section class="py-20">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-10">
+        <h2 class="text-3xl font-bold text-gray-900 mb-4">Up and running in 30 seconds</h2>
+        <p class="text-lg text-gray-500">One command. That's it.</p>
+      </div>
+      <div class="bg-gray-900 rounded-xl p-6 sm:p-8 font-mono text-sm text-gray-300 overflow-x-auto border border-gray-700">
+        <div class="text-gray-500 mb-3 text-xs">$ terminal</div>
+        <div class="whitespace-pre-wrap">docker run -d \
+  -p 8080:8080 \
+  -v featherci-data:/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e FEATHERCI_SECRET_KEY=$(openssl rand -base64 32) \
+  -e FEATHERCI_BASE_URL=http://localhost:8080 \
+  -e FEATHERCI_ADMINS=yourusername \
+  -e FEATHERCI_GITHUB_CLIENT_ID=your_id \
+  -e FEATHERCI_GITHUB_CLIENT_SECRET=your_secret \
+  featherci/featherci:latest</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features at a Glance -->
+  <section class="py-20 bg-gray-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <h2 class="text-3xl font-bold text-gray-900 mb-8 text-center">Features at a Glance</h2>
+      <div class="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-gray-50 border-b border-gray-200">
+              <th class="text-left px-6 py-3 font-semibold text-gray-700">Feature</th>
+              <th class="text-left px-6 py-3 font-semibold text-gray-700">Details</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Single binary</td><td class="px-6 py-3 text-gray-600">One executable, embedded web UI, SQLite storage</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Docker execution</td><td class="px-6 py-3 text-gray-600">Steps run in isolated containers with any image</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Visual pipelines</td><td class="px-6 py-3 text-gray-600">DAG visualization of build steps and dependencies</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Manual approvals</td><td class="px-6 py-3 text-gray-600">Gate deployments with human sign-off</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Conditional steps</td><td class="px-6 py-3 text-gray-600">Branch and pattern-based conditions</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Encrypted secrets</td><td class="px-6 py-3 text-gray-600">AES-256-GCM encryption at rest, masked in logs</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Build caching</td><td class="px-6 py-3 text-gray-600">Cache dependencies between builds with key templates</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Real-time logs</td><td class="px-6 py-3 text-gray-600">Stream build output as it happens</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Notifications</td><td class="px-6 py-3 text-gray-600">Email (SMTP/SendGrid/Mailgun), Slack, Discord, Pushover</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Multi-provider auth</td><td class="px-6 py-3 text-gray-600">GitHub, GitLab, Gitea/Forgejo (including self-hosted)</td></tr>
+            <tr><td class="px-6 py-3 font-medium text-gray-900">Distributed workers</td><td class="px-6 py-3 text-gray-600">Scale horizontally with additional build nodes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="py-20">
+    <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <h2 class="text-3xl font-bold text-gray-900 mb-4">Ready to get started?</h2>
+      <p class="text-lg text-gray-500 mb-8">Set up FeatherCI in under a minute.</p>
+      <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="docs/" class="btn btn-primary btn-lg">Installation Guide</a>
+        <a href="https://github.com/featherci/featherci" class="btn btn-secondary btn-lg">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 py-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-2">
+          <svg class="h-6 w-6 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+            <line x1="16" y1="8" x2="2" y2="22"/>
+            <line x1="17.5" y1="15" x2="9" y2="15"/>
+          </svg>
+          <span class="text-sm text-gray-500">FeatherCI</span>
+        </div>
+        <div class="flex items-center space-x-6 text-sm">
+          <a href="docs/" class="hover:text-white transition-colors">Docs</a>
+          <a href="https://github.com/featherci/featherci" class="hover:text-white transition-colors">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/docs.js"></script>
+</body>
+</html>

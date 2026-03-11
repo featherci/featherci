@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deployment - FeatherCI Docs</title>
+  <meta name="description" content="Deploy FeatherCI with Docker, systemd, or Kubernetes.">
+  <link rel="icon" href="../images/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../css/docs.css">
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="bg-gray-900 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <div class="flex items-center">
+          <a href="../" class="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors">
+            <svg class="h-8 w-8 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+              <line x1="16" y1="8" x2="2" y2="22"/>
+              <line x1="17.5" y1="15" x2="9" y2="15"/>
+            </svg>
+            <span class="text-xl font-bold">FeatherCI</span>
+          </a>
+          <div class="hidden md:flex ml-10 items-center space-x-1">
+            <a href="./" class="text-white bg-gray-800 rounded-md px-3 py-2 text-sm font-medium">Docs</a>
+            <a href="https://github.com/featherci/featherci" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium transition-colors">GitHub</a>
+          </div>
+        </div>
+        <button id="nav-toggle" class="md:hidden text-gray-300 hover:text-white">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-700">
+      <div class="px-4 py-3 space-y-2">
+        <a href="./" class="block text-white text-sm font-medium">Docs</a>
+        <a href="https://github.com/featherci/featherci" class="block text-gray-300 text-sm font-medium">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="lg:flex lg:gap-8">
+
+      <!-- Sidebar -->
+      <button id="sidebar-toggle" class="lg:hidden mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Menu
+      </button>
+      <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
+      <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white lg:bg-transparent border-r lg:border-0 border-gray-200 overflow-y-auto -translate-x-full lg:translate-x-0 transition-transform lg:shrink-0 pt-4 px-4 lg:px-0">
+        <nav class="space-y-6 text-sm">
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Getting Started</h4>
+            <ul class="space-y-1">
+              <li><a href="./" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Installation</a></li>
+              <li><a href="./#configuration" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Configuration</a></li>
+              <li><a href="./#first-project" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">First Project</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Guides</h4>
+            <ul class="space-y-1">
+              <li><a href="guides.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Syntax</a></li>
+              <li><a href="guides.html#secrets" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Secrets</a></li>
+              <li><a href="guides.html#caching" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Caching</a></li>
+              <li><a href="guides.html#notifications" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Notifications</a></li>
+              <li><a href="guides.html#manual-approvals" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Manual Approvals</a></li>
+              <li><a href="guides.html#distributed-workers" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Distributed Workers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Reference</h4>
+            <ul class="space-y-1">
+              <li><a href="reference.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Environment Variables</a></li>
+              <li><a href="reference.html#workflow-schema" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Schema</a></li>
+              <li><a href="reference.html#api" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">API Endpoints</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Deployment</h4>
+            <ul class="space-y-1">
+              <li><a href="deployment.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Docker</a></li>
+              <li><a href="deployment.html#systemd" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Systemd</a></li>
+              <li><a href="deployment.html#kubernetes" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Kubernetes</a></li>
+            </ul>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <main class="min-w-0 flex-1 prose">
+
+        <h1>Deployment</h1>
+
+        <!-- Docker -->
+        <h2 id="docker">Docker</h2>
+
+        <h3>Quick Start</h3>
+
+        <pre><code>docker run -d \
+  --name featherci \
+  -p 8080:8080 \
+  -v featherci-data:/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e FEATHERCI_SECRET_KEY=$(openssl rand -base64 32) \
+  -e FEATHERCI_BASE_URL=https://ci.example.com \
+  -e FEATHERCI_ADMINS=yourusername \
+  -e FEATHERCI_GITHUB_CLIENT_ID=your_client_id \
+  -e FEATHERCI_GITHUB_CLIENT_SECRET=your_client_secret \
+  featherci/featherci:latest</code></pre>
+
+        <h3>Docker Socket Mapping</h3>
+
+        <p>FeatherCI executes build steps inside Docker containers. When running FeatherCI itself in Docker, mount the host's Docker socket for <strong>sibling containers</strong>:</p>
+
+        <pre><code>-v /var/run/docker.sock:/var/run/docker.sock</code></pre>
+
+        <p>Build containers run alongside FeatherCI on the host's Docker daemon, not nested inside it. This is simpler and more performant than Docker-in-Docker (dind).</p>
+
+        <h4>Permissions</h4>
+
+        <p>The FeatherCI process must have permission to access the Docker socket:</p>
+
+        <ol>
+          <li><strong>Run as root</strong> (default in the official image)</li>
+          <li><strong>Match the docker group GID</strong> from the host:
+            <pre><code>docker run --group-add $(getent group docker | cut -d: -f3) ...</code></pre>
+          </li>
+        </ol>
+
+        <h4>DOCKER_HOST</h4>
+
+        <p>By default, FeatherCI connects via the unix socket at <code>/var/run/docker.sock</code>. For a remote Docker daemon:</p>
+
+        <pre><code>-e DOCKER_HOST=tcp://docker-host:2375</code></pre>
+
+        <h3>Docker Compose</h3>
+
+        <pre><code>services:
+  featherci:
+    image: featherci/featherci:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - featherci-data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      FEATHERCI_SECRET_KEY: "${FEATHERCI_SECRET_KEY}"
+      FEATHERCI_BASE_URL: "https://ci.example.com"
+      FEATHERCI_ADMINS: "yourusername"
+      FEATHERCI_DATABASE_PATH: "/data/featherci.db"
+      FEATHERCI_CACHE_PATH: "/data/cache"
+      FEATHERCI_WORKSPACE_PATH: "/data/workspaces"
+      FEATHERCI_GITHUB_CLIENT_ID: "${FEATHERCI_GITHUB_CLIENT_ID}"
+      FEATHERCI_GITHUB_CLIENT_SECRET: "${FEATHERCI_GITHUB_CLIENT_SECRET}"
+    restart: unless-stopped
+
+volumes:
+  featherci-data:</code></pre>
+
+        <p>Create a <code>.env</code> file alongside your <code>docker-compose.yml</code> with the secret values:</p>
+
+        <pre><code>FEATHERCI_SECRET_KEY=your-base64-key
+FEATHERCI_GITHUB_CLIENT_ID=your_id
+FEATHERCI_GITHUB_CLIENT_SECRET=your_secret</code></pre>
+
+        <h3>Data Persistence</h3>
+
+        <p>Mount a volume at <code>/data</code> and configure paths:</p>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Recommended Value</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_DATABASE_PATH</code></td><td><code>/data/featherci.db</code></td></tr>
+            <tr><td><code>FEATHERCI_CACHE_PATH</code></td><td><code>/data/cache</code></td></tr>
+            <tr><td><code>FEATHERCI_WORKSPACE_PATH</code></td><td><code>/data/workspaces</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3>Reverse Proxy</h3>
+
+        <p>Place FeatherCI behind a reverse proxy for TLS termination. Set <code>FEATHERCI_BASE_URL</code> to the public HTTPS URL.</p>
+
+        <p><strong>Caddy:</strong></p>
+
+        <pre><code>ci.example.com {
+    reverse_proxy featherci:8080
+}</code></pre>
+
+        <p><strong>nginx:</strong></p>
+
+        <pre><code>server {
+    listen 443 ssl;
+    server_name ci.example.com;
+
+    ssl_certificate /etc/ssl/certs/ci.example.com.pem;
+    ssl_certificate_key /etc/ssl/private/ci.example.com.key;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}</code></pre>
+
+        <h3>Distributed Setup with Docker</h3>
+
+        <pre><code># Master
+docker run -d \
+  --name featherci-master \
+  -p 8080:8080 \
+  -v featherci-data:/data \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e FEATHERCI_MODE=master \
+  -e FEATHERCI_WORKER_SECRET=your-shared-secret \
+  -e FEATHERCI_SECRET_KEY=... \
+  -e FEATHERCI_BASE_URL=https://ci.example.com \
+  featherci/featherci:latest
+
+# Worker (on another host)
+docker run -d \
+  --name featherci-worker \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e FEATHERCI_MODE=worker \
+  -e FEATHERCI_MASTER_URL=https://ci.example.com \
+  -e FEATHERCI_WORKER_SECRET=your-shared-secret \
+  featherci/featherci:latest</code></pre>
+
+        <hr>
+
+        <!-- Systemd -->
+        <h2 id="systemd">Systemd</h2>
+
+        <p>Run FeatherCI as a systemd service on Linux for automatic startup and process management.</p>
+
+        <h3>Prerequisites</h3>
+
+        <ul>
+          <li>FeatherCI binary installed (e.g. at <code>/usr/local/bin/featherci</code>)</li>
+          <li>Docker installed and running</li>
+          <li>A dedicated system user (optional but recommended)</li>
+        </ul>
+
+        <h3>Create a System User</h3>
+
+        <pre><code>sudo useradd --system --shell /usr/sbin/nologin --create-home --home-dir /var/lib/featherci featherci
+sudo usermod -aG docker featherci</code></pre>
+
+        <h3>Create the Environment File</h3>
+
+        <p>Store configuration in <code>/etc/featherci/featherci.env</code>:</p>
+
+        <pre><code>sudo mkdir -p /etc/featherci
+sudo tee /etc/featherci/featherci.env > /dev/null &lt;&lt;'EOF'
+FEATHERCI_SECRET_KEY=your-base64-encoded-key
+FEATHERCI_BASE_URL=https://ci.example.com
+FEATHERCI_ADMINS=yourusername
+FEATHERCI_BIND_ADDR=:8080
+FEATHERCI_DATABASE_PATH=/var/lib/featherci/featherci.db
+FEATHERCI_CACHE_PATH=/var/lib/featherci/cache
+FEATHERCI_WORKSPACE_PATH=/var/lib/featherci/workspaces
+FEATHERCI_GITHUB_CLIENT_ID=your_client_id
+FEATHERCI_GITHUB_CLIENT_SECRET=your_client_secret
+EOF
+sudo chmod 600 /etc/featherci/featherci.env</code></pre>
+
+        <h3>Create the Service File</h3>
+
+        <p>Create <code>/etc/systemd/system/featherci.service</code>:</p>
+
+        <pre><code>[Unit]
+Description=FeatherCI CI/CD Server
+Documentation=https://featherci.github.io
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=featherci
+Group=featherci
+EnvironmentFile=/etc/featherci/featherci.env
+ExecStart=/usr/local/bin/featherci
+Restart=on-failure
+RestartSec=5
+WorkingDirectory=/var/lib/featherci
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/featherci
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+        <h3>Enable and Start</h3>
+
+        <pre><code>sudo systemctl daemon-reload
+sudo systemctl enable featherci
+sudo systemctl start featherci</code></pre>
+
+        <h3>Check Status</h3>
+
+        <pre><code>sudo systemctl status featherci
+sudo journalctl -u featherci -f</code></pre>
+
+        <h3>Updating</h3>
+
+        <pre><code># Download new binary
+sudo curl -Lo /usr/local/bin/featherci https://github.com/featherci/featherci/releases/latest/download/featherci-linux-amd64
+sudo chmod +x /usr/local/bin/featherci
+
+# Restart
+sudo systemctl restart featherci</code></pre>
+
+        <hr>
+
+        <!-- Kubernetes -->
+        <h2 id="kubernetes">Kubernetes</h2>
+
+        <blockquote><p><strong>Experimental.</strong> Kubernetes deployment is functional but not yet battle-tested in production. Feedback is welcome.</p></blockquote>
+
+        <p>FeatherCI can run in Kubernetes using the Docker socket from the host node. Build steps run as sibling containers on the same node &mdash; they are Docker containers, not Kubernetes pods.</p>
+
+        <h3>Namespace</h3>
+
+        <pre><code>apiVersion: v1
+kind: Namespace
+metadata:
+  name: featherci</code></pre>
+
+        <h3>Secret</h3>
+
+        <pre><code>apiVersion: v1
+kind: Secret
+metadata:
+  name: featherci-config
+  namespace: featherci
+type: Opaque
+stringData:
+  FEATHERCI_SECRET_KEY: "your-base64-encoded-key"
+  FEATHERCI_GITHUB_CLIENT_ID: "your_client_id"
+  FEATHERCI_GITHUB_CLIENT_SECRET: "your_client_secret"</code></pre>
+
+        <h3>Persistent Volume Claim</h3>
+
+        <pre><code>apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: featherci-data
+  namespace: featherci
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi</code></pre>
+
+        <h3>Deployment</h3>
+
+        <pre><code>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: featherci
+  namespace: featherci
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: featherci
+  template:
+    metadata:
+      labels:
+        app: featherci
+    spec:
+      containers:
+        - name: featherci
+          image: featherci/featherci:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: FEATHERCI_BASE_URL
+              value: "https://ci.example.com"
+            - name: FEATHERCI_ADMINS
+              value: "yourusername"
+            - name: FEATHERCI_DATABASE_PATH
+              value: "/data/featherci.db"
+            - name: FEATHERCI_CACHE_PATH
+              value: "/data/cache"
+            - name: FEATHERCI_WORKSPACE_PATH
+              value: "/data/workspaces"
+          envFrom:
+            - secretRef:
+                name: featherci-config
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: docker-socket
+              mountPath: /var/run/docker.sock
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 3
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: featherci-data
+        - name: docker-socket
+          hostPath:
+            path: /var/run/docker.sock
+            type: Socket</code></pre>
+
+        <h3>Service</h3>
+
+        <pre><code>apiVersion: v1
+kind: Service
+metadata:
+  name: featherci
+  namespace: featherci
+spec:
+  selector:
+    app: featherci
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP</code></pre>
+
+        <h3>Ingress</h3>
+
+        <pre><code>apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: featherci
+  namespace: featherci
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - ci.example.com
+      secretName: featherci-tls
+  rules:
+    - host: ci.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: featherci
+                port:
+                  number: 80</code></pre>
+
+        <h3>Important Notes</h3>
+
+        <ul>
+          <li><strong>Docker socket:</strong> The deployment mounts the host's Docker socket. Build containers run on the host's Docker daemon, not as Kubernetes pods.</li>
+          <li><strong>Single replica:</strong> FeatherCI uses SQLite, which does not support concurrent writes. Run a single replica in standalone mode.</li>
+          <li><strong>Node affinity:</strong> Ensure the pod always schedules on the same node (or use a ReadWriteOnce PVC that pins it).</li>
+          <li><strong>Security:</strong> Mounting the Docker socket gives the container root-equivalent access to the host.</li>
+        </ul>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 py-12 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-2">
+          <svg class="h-6 w-6 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+            <line x1="16" y1="8" x2="2" y2="22"/>
+            <line x1="17.5" y1="15" x2="9" y2="15"/>
+          </svg>
+          <span class="text-sm text-gray-500">FeatherCI</span>
+        </div>
+        <div class="flex items-center space-x-6 text-sm">
+          <a href="./" class="hover:text-white transition-colors">Docs</a>
+          <a href="https://github.com/featherci/featherci" class="hover:text-white transition-colors">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/docs.js"></script>
+</body>
+</html>

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Guides - FeatherCI Docs</title>
+  <meta name="description" content="FeatherCI guides: workflow syntax, secrets, caching, notifications, manual approvals, and distributed workers.">
+  <link rel="icon" href="../images/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../css/docs.css">
+</head>
+<body class="bg-white text-gray-900 antialiased">
+
+  <!-- Nav -->
+  <nav class="bg-gray-900 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex h-16 items-center justify-between">
+        <div class="flex items-center">
+          <a href="../" class="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors">
+            <svg class="h-8 w-8 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+              <line x1="16" y1="8" x2="2" y2="22"/>
+              <line x1="17.5" y1="15" x2="9" y2="15"/>
+            </svg>
+            <span class="text-xl font-bold">FeatherCI</span>
+          </a>
+          <div class="hidden md:flex ml-10 items-center space-x-1">
+            <a href="./" class="text-white bg-gray-800 rounded-md px-3 py-2 text-sm font-medium">Docs</a>
+            <a href="https://github.com/featherci/featherci" class="text-gray-300 hover:bg-gray-700 hover:text-white rounded-md px-3 py-2 text-sm font-medium transition-colors">GitHub</a>
+          </div>
+        </div>
+        <button id="nav-toggle" class="md:hidden text-gray-300 hover:text-white">
+          <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+    <div id="mobile-menu" class="hidden md:hidden border-t border-gray-700">
+      <div class="px-4 py-3 space-y-2">
+        <a href="./" class="block text-white text-sm font-medium">Docs</a>
+        <a href="https://github.com/featherci/featherci" class="block text-gray-300 text-sm font-medium">GitHub</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="lg:flex lg:gap-8">
+
+      <!-- Sidebar -->
+      <button id="sidebar-toggle" class="lg:hidden mb-4 flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        Menu
+      </button>
+      <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-30 lg:hidden"></div>
+      <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-white lg:bg-transparent border-r lg:border-0 border-gray-200 overflow-y-auto -translate-x-full lg:translate-x-0 transition-transform lg:shrink-0 pt-4 px-4 lg:px-0">
+        <nav class="space-y-6 text-sm">
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Getting Started</h4>
+            <ul class="space-y-1">
+              <li><a href="./" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Installation</a></li>
+              <li><a href="./#configuration" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Configuration</a></li>
+              <li><a href="./#first-project" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">First Project</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Guides</h4>
+            <ul class="space-y-1">
+              <li><a href="guides.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Syntax</a></li>
+              <li><a href="guides.html#secrets" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Secrets</a></li>
+              <li><a href="guides.html#caching" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Caching</a></li>
+              <li><a href="guides.html#notifications" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Notifications</a></li>
+              <li><a href="guides.html#manual-approvals" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Manual Approvals</a></li>
+              <li><a href="guides.html#distributed-workers" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Distributed Workers</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Reference</h4>
+            <ul class="space-y-1">
+              <li><a href="reference.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Environment Variables</a></li>
+              <li><a href="reference.html#workflow-schema" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Schema</a></li>
+              <li><a href="reference.html#api" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">API Endpoints</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Deployment</h4>
+            <ul class="space-y-1">
+              <li><a href="deployment.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Docker</a></li>
+              <li><a href="deployment.html#systemd" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Systemd</a></li>
+              <li><a href="deployment.html#kubernetes" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Kubernetes</a></li>
+            </ul>
+          </div>
+        </nav>
+      </aside>
+
+      <!-- Content -->
+      <main class="min-w-0 flex-1 prose">
+
+        <h1>Guides</h1>
+
+        <!-- Workflow Syntax -->
+        <h2 id="workflow-syntax">Workflow Syntax</h2>
+
+        <p>FeatherCI workflows are defined in <code>.featherci/workflow.yml</code> at the root of your repository.</p>
+
+        <h3>Basic Structure</h3>
+
+        <pre><code>name: My Pipeline
+
+on:
+  push:
+  pull_request:
+
+steps:
+  - name: build
+    image: golang:1.22
+    commands:
+      - go build ./...</code></pre>
+
+        <p>A workflow has three top-level keys: <code>name</code>, <code>on</code> (triggers), and <code>steps</code>.</p>
+
+        <h3>Triggers</h3>
+
+        <p>The <code>on</code> key controls when the workflow runs.</p>
+
+        <p><strong>Push triggers</strong> &mdash; run on every push, or filter by branch/tag patterns (glob supported):</p>
+
+        <pre><code>on:
+  push:
+    branches: [main, release/*]
+    tags: [v*]</code></pre>
+
+        <p><strong>Pull request triggers</strong> &mdash; run on all PRs, or filter by target branch:</p>
+
+        <pre><code>on:
+  pull_request:
+    branches: [main]</code></pre>
+
+        <p><strong>Combined:</strong></p>
+
+        <pre><code>on:
+  push:
+    branches: [main, develop]
+  pull_request:</code></pre>
+
+        <h3>Steps</h3>
+
+        <p>Each step runs inside an isolated Docker container.</p>
+
+        <pre><code>steps:
+  - name: test          # Unique identifier (required)
+    image: node:20      # Docker image (required for command steps)
+    commands:           # Shell commands to execute
+      - npm install
+      - npm test</code></pre>
+
+        <h3>Environment Variables</h3>
+
+        <pre><code>- name: deploy
+  image: alpine:latest
+  env:
+    NODE_ENV: production
+    API_URL: https://api.example.com
+  commands:
+    - ./deploy.sh</code></pre>
+
+        <p>Reference <a href="#secrets">secrets</a> with <code>$SECRET_NAME</code>:</p>
+
+        <pre><code>  env:
+    DEPLOY_TOKEN: $DEPLOY_TOKEN</code></pre>
+
+        <h3>Working Directory</h3>
+
+        <pre><code>- name: test-frontend
+  image: node:20
+  working_dir: /workspace/frontend
+  commands:
+    - npm test</code></pre>
+
+        <h3>Timeout</h3>
+
+        <p>Set a maximum execution time in minutes (default: 60):</p>
+
+        <pre><code>- name: long-test
+  image: golang:1.22
+  timeout_minutes: 120
+  commands:
+    - go test -race ./...</code></pre>
+
+        <h3>Continue on Error</h3>
+
+        <pre><code>- name: lint
+  image: golang:1.22
+  continue_on_error: true
+  commands:
+    - golangci-lint run</code></pre>
+
+        <h3>Dependencies</h3>
+
+        <p>Use <code>depends_on</code> to control execution order. Steps without dependencies run in parallel.</p>
+
+        <pre><code>steps:
+  - name: test
+    image: golang:1.22
+    commands:
+      - go test ./...
+
+  - name: lint
+    image: golang:1.22
+    commands:
+      - golangci-lint run
+
+  # Runs after both test and lint succeed
+  - name: build
+    image: golang:1.22
+    depends_on: [test, lint]
+    commands:
+      - go build -o app ./cmd/app</code></pre>
+
+        <p>FeatherCI renders this as a visual DAG in the build view.</p>
+
+        <h3>Conditional Steps</h3>
+
+        <p>Use the <code>if</code> field to run a step only when a condition is met:</p>
+
+        <pre><code>- name: deploy
+  image: alpine:latest
+  if: branch == "main"
+  commands:
+    - ./deploy.sh</code></pre>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>branch</code></td><td>The branch being built</td></tr>
+          </tbody>
+        </table>
+
+        <table>
+          <thead><tr><th>Operator</th><th>Description</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td><code>==</code></td><td>Equals</td><td><code>branch == "main"</code></td></tr>
+            <tr><td><code>!=</code></td><td>Not equals</td><td><code>branch != "develop"</code></td></tr>
+            <tr><td><code>=~</code></td><td>Glob match</td><td><code>branch =~ "release/*"</code></td></tr>
+            <tr><td><code>!~</code></td><td>Glob not match</td><td><code>branch !~ "feature/*"</code></td></tr>
+          </tbody>
+        </table>
+
+        <p>Values must be quoted with double quotes.</p>
+
+        <h3>Full Example</h3>
+
+        <pre><code>name: Production Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+steps:
+  - name: test
+    image: golang:1.22
+    timeout_minutes: 30
+    cache:
+      key: go-{{ checksum "go.sum" }}
+      paths:
+        - /go/pkg/mod
+    commands:
+      - go test -v -race ./...
+
+  - name: lint
+    image: golang:1.22
+    continue_on_error: true
+    commands:
+      - golangci-lint run
+
+  - name: build
+    image: golang:1.22
+    depends_on: [test, lint]
+    commands:
+      - CGO_ENABLED=0 go build -o app ./cmd/app
+
+  - name: staging-approval
+    type: approval
+    depends_on: [build]
+
+  - name: deploy-staging
+    image: alpine:latest
+    depends_on: [staging-approval]
+    if: branch == "main"
+    secrets: [DEPLOY_KEY, STAGING_HOST]
+    env:
+      DEPLOY_KEY: $DEPLOY_KEY
+      DEPLOY_HOST: $STAGING_HOST
+    commands:
+      - ./deploy.sh staging</code></pre>
+
+        <hr>
+
+        <!-- Secrets -->
+        <h2 id="secrets">Secrets</h2>
+
+        <p>FeatherCI provides encrypted secret storage for credentials, tokens, and other sensitive values. Secrets are encrypted at rest using AES-256-GCM and injected as environment variables during builds.</p>
+
+        <h3>Adding Secrets</h3>
+
+        <ol>
+          <li>Navigate to your project</li>
+          <li>Go to <strong>Secrets</strong> (in the project sidebar)</li>
+          <li>Enter a name and value</li>
+          <li>Click <strong>Add Secret</strong></li>
+        </ol>
+
+        <p>Secret values are encrypted immediately and can never be viewed again through the UI.</p>
+
+        <h3>Using Secrets in Workflows</h3>
+
+        <p><strong>1. Declare in the <code>secrets</code> list:</strong></p>
+
+        <pre><code>- name: deploy
+  image: alpine:latest
+  secrets: [DEPLOY_TOKEN, SSH_KEY]
+  commands:
+    - ./deploy.sh</code></pre>
+
+        <p>The listed secrets are made available as environment variables in the container.</p>
+
+        <p><strong>2. Map to environment variables with <code>env</code>:</strong></p>
+
+        <pre><code>- name: deploy
+  image: alpine:latest
+  secrets: [DEPLOY_TOKEN]
+  env:
+    MY_TOKEN: $DEPLOY_TOKEN
+  commands:
+    - echo "Deploying with token..."
+    - ./deploy.sh</code></pre>
+
+        <h3>Log Masking</h3>
+
+        <p>Secret values are automatically masked in build logs. If a command outputs a secret value, it is replaced with <code>***</code> in the log output.</p>
+
+        <h3>Security Details</h3>
+
+        <ul>
+          <li><strong>Encryption:</strong> AES-256-GCM with a 32-byte key derived from <code>FEATHERCI_SECRET_KEY</code></li>
+          <li><strong>Storage:</strong> Encrypted values stored in the SQLite database</li>
+          <li><strong>Access:</strong> Secrets are scoped to the project they belong to</li>
+          <li><strong>Exposure:</strong> Values cannot be retrieved through the UI or API after creation</li>
+          <li><strong>Deletion:</strong> Secrets can be deleted through the project's secrets page</li>
+        </ul>
+
+        <hr>
+
+        <!-- Caching -->
+        <h2 id="caching">Caching</h2>
+
+        <p>Build caching stores directories between builds so you don't re-download dependencies every time. Caches are stored on the local filesystem at <code>FEATHERCI_CACHE_PATH</code> (default: <code>./cache</code>).</p>
+
+        <h3>Basic Usage</h3>
+
+        <pre><code>- name: test
+  image: node:20
+  cache:
+    key: node-{{ checksum "package-lock.json" }}
+    paths:
+      - node_modules
+  commands:
+    - npm ci
+    - npm test</code></pre>
+
+        <p>Before the step runs, FeatherCI restores the cached directories if a cache entry matches the key. After the step completes, the paths are saved back.</p>
+
+        <h3>Cache Keys</h3>
+
+        <table>
+          <thead><tr><th>Template</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td><code>{{ checksum "file" }}</code></td><td>SHA-256 hash of the file contents</td></tr>
+            <tr><td><code>{{ .Branch }}</code></td><td>Current branch name</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Examples by Language</h3>
+
+        <p><strong>Go:</strong></p>
+        <pre><code>cache:
+  key: go-{{ checksum "go.sum" }}
+  paths:
+    - /go/pkg/mod</code></pre>
+
+        <p><strong>Node.js:</strong></p>
+        <pre><code>cache:
+  key: node-{{ checksum "package-lock.json" }}
+  paths:
+    - node_modules</code></pre>
+
+        <p><strong>Python:</strong></p>
+        <pre><code>cache:
+  key: pip-{{ checksum "requirements.txt" }}
+  paths:
+    - /root/.cache/pip</code></pre>
+
+        <p><strong>Rust:</strong></p>
+        <pre><code>cache:
+  key: cargo-{{ checksum "Cargo.lock" }}
+  paths:
+    - /usr/local/cargo/registry
+    - target</code></pre>
+
+        <h3>Cache Behavior</h3>
+
+        <ul>
+          <li><strong>Restore:</strong> Before a step runs, FeatherCI looks for a matching cache entry. If found, cached directories are extracted into the container.</li>
+          <li><strong>Save:</strong> After a step succeeds, specified paths are archived under the cache key.</li>
+          <li><strong>Overwrite:</strong> Existing cache entries with the same key are overwritten.</li>
+          <li><strong>No partial matches:</strong> Cache lookup is exact &mdash; no fallback to prefix matching.</li>
+        </ul>
+
+        <hr>
+
+        <!-- Notifications -->
+        <h2 id="notifications">Notifications</h2>
+
+        <p>FeatherCI can notify you when builds succeed, fail, or are cancelled. Notification channels are configured per-project through the web UI.</p>
+
+        <h3>Supported Channels</h3>
+
+        <table>
+          <thead><tr><th>Channel</th><th>Type Key</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr><td>Email (SMTP)</td><td><code>email_smtp</code></td><td>Send via your own SMTP server</td></tr>
+            <tr><td>Email (SendGrid)</td><td><code>email_sendgrid</code></td><td>Send via SendGrid API</td></tr>
+            <tr><td>Email (Mailgun)</td><td><code>email_mailgun</code></td><td>Send via Mailgun API</td></tr>
+            <tr><td>Slack</td><td><code>slack</code></td><td>Post to a Slack channel via incoming webhook</td></tr>
+            <tr><td>Discord</td><td><code>discord</code></td><td>Post to a Discord channel via webhook</td></tr>
+            <tr><td>Pushover</td><td><code>pushover</code></td><td>Send push notifications to devices</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Adding a Notification Channel</h3>
+
+        <ol>
+          <li>Navigate to your project</li>
+          <li>Go to <strong>Notifications</strong> (in the project sidebar)</li>
+          <li>Click <strong>Add Channel</strong></li>
+          <li>Select the channel type and fill in the configuration</li>
+          <li>Choose which events to notify on (success, failure, cancellation)</li>
+          <li>Click <strong>Create</strong></li>
+        </ol>
+
+        <h3>Channel Configuration</h3>
+
+        <h4>Email (SMTP)</h4>
+        <ul>
+          <li><strong>SMTP Host</strong> &mdash; Mail server hostname (e.g. <code>smtp.example.com</code>)</li>
+          <li><strong>SMTP Port</strong> &mdash; Server port (typically <code>587</code> for TLS)</li>
+          <li><strong>Username</strong> &mdash; SMTP authentication username</li>
+          <li><strong>Password</strong> &mdash; SMTP authentication password</li>
+          <li><strong>From Address</strong> &mdash; Sender email address</li>
+          <li><strong>To Addresses</strong> &mdash; Comma-separated recipient email addresses</li>
+        </ul>
+
+        <h4>Email (SendGrid)</h4>
+        <ul>
+          <li><strong>API Key</strong> &mdash; Your SendGrid API key</li>
+          <li><strong>From Address</strong> &mdash; Verified sender address</li>
+          <li><strong>To Addresses</strong> &mdash; Comma-separated recipient email addresses</li>
+        </ul>
+
+        <h4>Email (Mailgun)</h4>
+        <ul>
+          <li><strong>API Key</strong> &mdash; Your Mailgun API key</li>
+          <li><strong>Domain</strong> &mdash; Your Mailgun domain</li>
+          <li><strong>From Address</strong> &mdash; Sender address</li>
+          <li><strong>To Addresses</strong> &mdash; Comma-separated recipient email addresses</li>
+        </ul>
+
+        <h4>Slack</h4>
+        <p>Create an <a href="https://api.slack.com/messaging/webhooks">Incoming Webhook</a> in your Slack workspace. Copy the webhook URL and paste it into the <strong>Webhook URL</strong> field.</p>
+
+        <h4>Discord</h4>
+        <p>In Discord, go to <strong>Channel Settings &rarr; Integrations &rarr; Webhooks</strong>. Create a new webhook and copy the URL into the <strong>Webhook URL</strong> field.</p>
+
+        <h4>Pushover</h4>
+        <ul>
+          <li><strong>User Key</strong> &mdash; Your Pushover user key</li>
+          <li><strong>API Token</strong> &mdash; Your Pushover application API token</li>
+        </ul>
+
+        <h3>Event Filters</h3>
+
+        <p>Each channel can be configured to trigger on any combination of: <strong>Success</strong>, <strong>Failure</strong>, and <strong>Cancelled</strong>.</p>
+
+        <h3>Testing</h3>
+
+        <p>After creating a channel, use the <strong>Test</strong> button to send a test notification and verify your configuration.</p>
+
+        <hr>
+
+        <!-- Manual Approvals -->
+        <h2 id="manual-approvals">Manual Approvals</h2>
+
+        <p>Approval steps let you gate your pipeline with human sign-off. The workflow pauses at the approval step and waits for a user to approve before downstream steps continue.</p>
+
+        <h3>Adding an Approval Step</h3>
+
+        <p>Set <code>type: approval</code> on a step. Approval steps don't need <code>image</code> or <code>commands</code>:</p>
+
+        <pre><code>steps:
+  - name: build
+    image: golang:1.22
+    commands:
+      - go build -o app ./cmd/app
+
+  - name: deploy-approval
+    type: approval
+    depends_on: [build]
+
+  - name: deploy
+    image: alpine:latest
+    depends_on: [deploy-approval]
+    commands:
+      - ./deploy.sh</code></pre>
+
+        <h3>How It Works</h3>
+
+        <ol>
+          <li>When the workflow reaches an approval step, the build status shows <strong>waiting</strong></li>
+          <li>The build page displays an <strong>Approve</strong> button on the approval step</li>
+          <li>Any authenticated user with access to the project can click Approve</li>
+          <li>Once approved, downstream steps resume execution</li>
+        </ol>
+
+        <h3>Multi-Stage Promotion</h3>
+
+        <pre><code>steps:
+  - name: test
+    image: golang:1.22
+    commands:
+      - go test ./...
+
+  - name: build
+    image: golang:1.22
+    depends_on: [test]
+    commands:
+      - go build -o app ./cmd/app
+
+  - name: staging-gate
+    type: approval
+    depends_on: [build]
+
+  - name: deploy-staging
+    image: alpine:latest
+    depends_on: [staging-gate]
+    if: branch == "main"
+    commands:
+      - ./deploy.sh staging
+
+  - name: prod-gate
+    type: approval
+    depends_on: [deploy-staging]
+
+  - name: deploy-prod
+    image: alpine:latest
+    depends_on: [prod-gate]
+    if: branch == "main"
+    commands:
+      - ./deploy.sh production</code></pre>
+
+        <p>This creates a two-stage promotion workflow: build &rarr; approve &rarr; staging &rarr; approve &rarr; production.</p>
+
+        <h3>Tips</h3>
+
+        <ul>
+          <li>Approval steps appear as distinct nodes in the pipeline DAG visualization</li>
+          <li>If a build is cancelled, pending approval steps are also cancelled</li>
+          <li>Approval steps don't have a timeout &mdash; they wait indefinitely until approved or cancelled</li>
+        </ul>
+
+        <hr>
+
+        <!-- Distributed Workers -->
+        <h2 id="distributed-workers">Distributed Workers</h2>
+
+        <p>FeatherCI can scale build capacity by running additional worker nodes. Workers poll the master instance for jobs and execute builds independently.</p>
+
+        <h3>Architecture</h3>
+
+        <p>In distributed mode, FeatherCI runs in two roles:</p>
+
+        <ul>
+          <li><strong>Master</strong> &mdash; Accepts webhooks, serves the web UI, stores data, and distributes build jobs</li>
+          <li><strong>Worker</strong> &mdash; Polls the master for pending jobs, executes build steps in Docker containers, and reports results back</li>
+        </ul>
+
+        <p>In the default <code>standalone</code> mode, a single instance acts as both.</p>
+
+        <h3>Master Setup</h3>
+
+        <pre><code>FEATHERCI_MODE=master
+FEATHERCI_WORKER_SECRET=your-shared-secret
+FEATHERCI_BASE_URL=https://ci.example.com
+FEATHERCI_SECRET_KEY=...
+FEATHERCI_ADMINS=admin-user
+# ... OAuth config ...</code></pre>
+
+        <h3>Worker Setup</h3>
+
+        <pre><code>FEATHERCI_MODE=worker
+FEATHERCI_MASTER_URL=https://ci.example.com
+FEATHERCI_WORKER_SECRET=your-shared-secret</code></pre>
+
+        <p>The <code>FEATHERCI_WORKER_SECRET</code> must match between master and all workers.</p>
+
+        <h3>Worker with Docker</h3>
+
+        <pre><code>docker run -d \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -e FEATHERCI_MODE=worker \
+  -e FEATHERCI_MASTER_URL=https://ci.example.com \
+  -e FEATHERCI_WORKER_SECRET=your-shared-secret \
+  featherci/featherci:latest</code></pre>
+
+        <h3>Requirements</h3>
+
+        <ul>
+          <li>Workers must be able to reach the master URL over the network</li>
+          <li>Workers must have Docker installed and accessible</li>
+          <li>All instances must share the same <code>FEATHERCI_WORKER_SECRET</code></li>
+          <li>Workers do not need OAuth configuration or a database</li>
+        </ul>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-400 py-12 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center space-x-2">
+          <svg class="h-6 w-6 text-feather-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"/>
+            <line x1="16" y1="8" x2="2" y2="22"/>
+            <line x1="17.5" y1="15" x2="9" y2="15"/>
+          </svg>
+          <span class="text-sm text-gray-500">FeatherCI</span>
+        </div>
+        <div class="flex items-center space-x-6 text-sm">
+          <a href="./" class="hover:text-white transition-colors">Docs</a>
+          <a href="https://github.com/featherci/featherci" class="hover:text-white transition-colors">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="../js/docs.js"></script>
+</body>
+</html>

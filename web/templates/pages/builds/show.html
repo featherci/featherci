@@ -51,6 +51,7 @@
 <script>
 (function() {
     var pollers = {};
+    var savedStepState = {};
 
     function escapeHtml(text) {
         var d = document.createElement('div');
@@ -106,7 +107,7 @@
     }
 
     function initLogViewers() {
-        document.querySelectorAll('details').forEach(function(details) {
+        document.querySelectorAll('#build-steps details').forEach(function(details) {
             var el = details.querySelector('.step-log');
             if (!el) return;
 
@@ -124,12 +125,78 @@
         });
     }
 
-    // Re-initialize after HTMX swaps the build-steps div
+    // Save step UI state before HTMX replaces #build-steps
+    document.addEventListener('htmx:beforeSwap', function(evt) {
+        if (!evt.detail.target || evt.detail.target.id !== 'build-steps') return;
+
+        savedStepState = {};
+        document.querySelectorAll('#build-steps .step-log').forEach(function(el) {
+            var id = el.dataset.stepId;
+            if (!id) return;
+            var details = el.closest('details');
+            var atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 5;
+            savedStepState[id] = {
+                open: details ? details.open : false,
+                scrollTop: el.scrollTop,
+                atBottom: atBottom,
+                html: el.innerHTML,
+                offset: parseInt(el.dataset.offset, 10) || 0
+            };
+        });
+    });
+
+    // Restore step UI state after HTMX swaps in new #build-steps
     document.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target && evt.detail.target.id === 'build-steps') {
-            // Stop all existing pollers
-            Object.keys(pollers).forEach(stopPolling);
-            initLogViewers();
+        if (!evt.detail.target || evt.detail.target.id !== 'build-steps') return;
+
+        // Stop all existing pollers
+        Object.keys(pollers).forEach(stopPolling);
+
+        // Restore saved state into new DOM
+        document.querySelectorAll('#build-steps .step-log').forEach(function(el) {
+            var id = el.dataset.stepId;
+            var state = savedStepState[id];
+            if (!state) return;
+
+            var details = el.closest('details');
+
+            // Restore open state: keep open if user had it open
+            if (state.open && details && !details.open) {
+                details.open = true;
+            }
+
+            // Restore log content and offset if we had fetched logs
+            if (state.offset > 0) {
+                el.innerHTML = state.html;
+                el.dataset.offset = String(state.offset);
+
+                // Restore scroll position after DOM settles
+                var scrollTop = state.scrollTop;
+                var wasAtBottom = state.atBottom;
+                requestAnimationFrame(function() {
+                    if (wasAtBottom) {
+                        el.scrollTop = el.scrollHeight;
+                    } else {
+                        el.scrollTop = scrollTop;
+                    }
+                });
+            }
+        });
+
+        savedStepState = {};
+        initLogViewers();
+    });
+
+    // Skip HTMX poll if user has text selected within #build-steps
+    document.addEventListener('htmx:beforeRequest', function(evt) {
+        if (!evt.detail.elt || evt.detail.elt.id !== 'build-steps') return;
+
+        var sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+
+        var buildSteps = document.getElementById('build-steps');
+        if (buildSteps && buildSteps.contains(sel.anchorNode)) {
+            evt.preventDefault();
         }
     });
 

@@ -51,6 +51,20 @@ var emailTemplate = template.Must(template.New("email").Parse(`<!DOCTYPE html>
           <td>{{.DurationString}}</td>
         </tr>
       </table>
+      {{if .FailedSteps}}
+      <div style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:16px">
+        <h3 style="margin:0 0 12px 0;font-size:15px;color:#991b1b">Failed Steps</h3>
+        {{range .FailedSteps}}
+        <div style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:13px;color:#dc2626;margin-bottom:4px">&#x2717; {{.Name}}</div>
+          {{if .LogLines}}
+          <pre style="margin:0;padding:8px 12px;background:#1e1e1e;color:#d4d4d4;border-radius:6px;font-size:12px;line-height:1.5;overflow-x:auto;white-space:pre-wrap;word-break:break-all">{{range .LogLines}}{{.}}
+{{end}}</pre>
+          {{end}}
+        </div>
+        {{end}}
+      </div>
+      {{end}}
       {{if .BuildURL}}
       <div style="margin-top:20px">
         <a href="{{.BuildURL}}" style="display:inline-block;background:#4f46e5;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-size:14px;font-weight:500">View Build</a>

@@ -183,14 +183,16 @@ func (h *GitHubHandler) parsePullRequestEvent(body []byte) (*Event, error) {
 	}
 
 	event := &Event{
-		Provider:  "github",
-		EventType: "pull_request",
-		FullName:  payload.Repository.FullName,
-		Ref:       fmt.Sprintf("refs/pull/%d/head", payload.Number),
-		Branch:    payload.PullRequest.Head.Ref,
-		CommitSHA: payload.PullRequest.Head.SHA,
-		CloneURL:  payload.Repository.CloneURL,
-		Sender:    payload.Sender.Login,
+		Provider:      "github",
+		EventType:     "pull_request",
+		FullName:      payload.Repository.FullName,
+		Ref:           fmt.Sprintf("refs/pull/%d/head", payload.Number),
+		Branch:        payload.PullRequest.Head.Ref,
+		CommitSHA:     payload.PullRequest.Head.SHA,
+		CloneURL:      payload.Repository.CloneURL,
+		Sender:        payload.Sender.Login,
+		CommitMessage: payload.PullRequest.Title,
+		CommitAuthor:  payload.PullRequest.User.Login,
 		PullRequest: &PullRequestEvent{
 			Number:       payload.Number,
 			Action:       payload.Action,

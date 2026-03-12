@@ -98,7 +98,7 @@ func New(cfg *config.Config, db *database.DB, logger *slog.Logger) (*Server, err
 
 	// Initialize notification channels
 	notificationChannels := models.NewNotificationChannelRepository(db.DB)
-	notificationService := services.NewNotificationService(notificationChannels, encryptor, cfg.BaseURL, cfg.DevMode, logger)
+	notificationService := services.NewNotificationService(notificationChannels, steps, encryptor, cfg.BaseURL, cfg.DevMode, logger)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(providers, users, sessions, cfg)

@@ -193,7 +193,7 @@ func startEmbeddedWorker(ctx context.Context, cfg *config.Config, db *database.D
 	secretSvc := services.NewSecretService(secretRepo, encryptor)
 
 	notificationRepo := models.NewNotificationChannelRepository(db.DB)
-	notificationSvc := services.NewNotificationService(notificationRepo, encryptor, cfg.BaseURL, cfg.DevMode, logger)
+	notificationSvc := services.NewNotificationService(notificationRepo, stepRepo, encryptor, cfg.BaseURL, cfg.DevMode, logger)
 	statusSvc := status.NewStatusService(cfg, tokenSrc, logger)
 
 	workerCfg := worker.DefaultConfig()

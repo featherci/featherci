@@ -229,15 +229,22 @@ func (h *GiteaHandler) parsePullRequestEvent(body []byte) (*Event, error) {
 		sender = payload.Sender.Username
 	}
 
+	prAuthor := payload.PullRequest.User.Login
+	if prAuthor == "" {
+		prAuthor = payload.PullRequest.User.Username
+	}
+
 	event := &Event{
-		Provider:  "gitea",
-		EventType: "pull_request",
-		FullName:  payload.Repository.FullName,
-		Ref:       fmt.Sprintf("refs/pull/%d/head", payload.PullRequest.Number),
-		Branch:    payload.PullRequest.Head.Ref,
-		CommitSHA: payload.PullRequest.Head.SHA,
-		CloneURL:  payload.Repository.CloneURL,
-		Sender:    sender,
+		Provider:      "gitea",
+		EventType:     "pull_request",
+		FullName:      payload.Repository.FullName,
+		Ref:           fmt.Sprintf("refs/pull/%d/head", payload.PullRequest.Number),
+		Branch:        payload.PullRequest.Head.Ref,
+		CommitSHA:     payload.PullRequest.Head.SHA,
+		CloneURL:      payload.Repository.CloneURL,
+		Sender:        sender,
+		CommitMessage: payload.PullRequest.Title,
+		CommitAuthor:  prAuthor,
 		PullRequest: &PullRequestEvent{
 			Number:       payload.PullRequest.Number,
 			Action:       action,

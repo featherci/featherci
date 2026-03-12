@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/featherci/featherci/internal/crypto"
+	"github.com/featherci/featherci/internal/executor"
 	"github.com/featherci/featherci/internal/models"
 	"github.com/featherci/featherci/internal/notify"
 )
@@ -18,6 +19,7 @@ import (
 // NotificationService provides business logic for notification channels.
 type NotificationService struct {
 	channels     models.NotificationChannelRepository
+	steps        models.BuildStepRepository
 	encryptor    *crypto.Encryptor
 	baseURL      string
 	devMode      bool
@@ -28,6 +30,7 @@ type NotificationService struct {
 // NewNotificationService creates a new NotificationService.
 func NewNotificationService(
 	channels models.NotificationChannelRepository,
+	steps models.BuildStepRepository,
 	encryptor *crypto.Encryptor,
 	baseURL string,
 	devMode bool,
@@ -35,6 +38,7 @@ func NewNotificationService(
 ) *NotificationService {
 	svc := &NotificationService{
 		channels:  channels,
+		steps:     steps,
 		encryptor: encryptor,
 		baseURL:   baseURL,
 		devMode:   devMode,
@@ -153,31 +157,73 @@ func (s *NotificationService) GetChannel(ctx context.Context, channelID int64) (
 }
 
 // TestChannel sends a test notification through a channel.
+// In dev mode, it captures three examples (success, failure, cancelled) for preview.
 func (s *NotificationService) TestChannel(ctx context.Context, channelID int64) error {
 	channel, config, err := s.GetChannel(ctx, channelID)
 	if err != nil {
 		return err
 	}
 
-	event := notify.BuildEvent{
+	base := notify.BuildEvent{
 		ProjectName:   "test-project",
 		BuildNumber:   42,
-		Status:        "success",
 		Branch:        "main",
 		CommitSHA:     "abc1234def5678",
-		CommitMessage: "This is a test notification from FeatherCI",
+		CommitMessage: "Add user authentication flow",
 		CommitAuthor:  "FeatherCI",
-		Duration:      45 * time.Second,
+		Duration:      2*time.Minute + 35*time.Second,
 		BuildURL:      s.baseURL,
 		ProjectURL:    s.baseURL,
 		CommitURL:     "https://github.com/example/test-project/commit/abc1234def5678",
 	}
 
 	if s.devMode && s.previewStore != nil {
-		s.previewStore.Capture(channel.Name, channel.Type, event, config["from"], config["to"])
+		// Capture success example
+		success := base
+		success.Status = "success"
+		s.previewStore.Capture(channel.Name, channel.Type, success, config["from"], config["to"])
+
+		// Capture failure example with failed steps and log snippets
+		failure := base
+		failure.Status = "failure"
+		failure.BuildNumber = 43
+		failure.FailedSteps = []notify.FailedStep{
+			{
+				Name: "minitest",
+				LogLines: []string{
+					"Failure:",
+					"UserAuthTest#test_login_with_invalid_credentials [test/models/user_auth_test.rb:42]:",
+					"Expected: \"Invalid email or password\"",
+					`  Actual: nil`,
+					"rails test test/models/user_auth_test.rb:38",
+				},
+			},
+			{
+				Name: "system",
+				LogLines: []string{
+					"Error:",
+					"ActionView::Template::Error: undefined method `full_name' for nil",
+					"    app/views/profiles/show.html.erb:12",
+					"    test/system/profiles_test.rb:28:in `test_view_profile'",
+					"1 runs, 0 assertions, 0 failures, 1 errors, 0 skips",
+				},
+			},
+		}
+		s.previewStore.Capture(channel.Name, channel.Type, failure, config["from"], config["to"])
+
+		// Capture cancelled example
+		cancelled := base
+		cancelled.Status = "cancelled"
+		cancelled.BuildNumber = 44
+		cancelled.Duration = 18 * time.Second
+		s.previewStore.Capture(channel.Name, channel.Type, cancelled, config["from"], config["to"])
+
 		return nil
 	}
 
+	// Production: send only the success test event
+	event := base
+	event.Status = "success"
 	notifier, err := notify.NewNotifier(channel.Type, config)
 	if err != nil {
 		return fmt.Errorf("creating notifier: %w", err)
@@ -210,6 +256,12 @@ func (s *NotificationService) NotifyBuild(ctx context.Context, build *models.Bui
 
 	projectURL := fmt.Sprintf("%s/projects/%s/%s", s.baseURL, project.Namespace, project.Name)
 
+	// For failed builds, collect failed steps with log tails
+	var failedSteps []notify.FailedStep
+	if build.Status == models.BuildStatusFailure && s.steps != nil {
+		failedSteps = s.loadFailedSteps(ctx, build.ID)
+	}
+
 	event := notify.BuildEvent{
 		ProjectName:   project.FullName,
 		BuildNumber:   build.BuildNumber,
@@ -222,6 +274,7 @@ func (s *NotificationService) NotifyBuild(ctx context.Context, build *models.Bui
 		BuildURL:      fmt.Sprintf("%s/builds/%d", projectURL, build.BuildNumber),
 		ProjectURL:    projectURL,
 		CommitURL:     commitURL(project.CloneURL, project.Provider, build.CommitSHA),
+		FailedSteps:   failedSteps,
 	}
 
 	var wg sync.WaitGroup
@@ -307,4 +360,38 @@ func commitURL(cloneURL, provider, sha string) string {
 	default: // github, gitea/forgejo
 		return base + path + "/commit/" + sha
 	}
+}
+
+const failedStepLogLines = 5
+
+// loadFailedSteps retrieves failed steps for a build with their last log lines.
+func (s *NotificationService) loadFailedSteps(ctx context.Context, buildID int64) []notify.FailedStep {
+	steps, err := s.steps.ListByBuild(ctx, buildID)
+	if err != nil {
+		s.logger.Error("failed to load steps for notification", "build_id", buildID, "error", err)
+		return nil
+	}
+
+	var failed []notify.FailedStep
+	for _, step := range steps {
+		if step.Status != models.StepStatusFailure {
+			continue
+		}
+		fs := notify.FailedStep{Name: step.Name}
+		if step.LogPath != nil && *step.LogPath != "" {
+			total, err := executor.CountLines(*step.LogPath)
+			if err == nil && total > 0 {
+				offset := total - failedStepLogLines
+				if offset < 0 {
+					offset = 0
+				}
+				lines, err := executor.ReadLines(*step.LogPath, offset, failedStepLogLines)
+				if err == nil {
+					fs.LogLines = lines
+				}
+			}
+		}
+		failed = append(failed, fs)
+	}
+	return failed
 }

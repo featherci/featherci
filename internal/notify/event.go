@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+// FailedStep contains info about a failed build step for notification emails.
+type FailedStep struct {
+	Name     string
+	LogLines []string // last N lines of log output
+}
+
 // BuildEvent contains the information sent in a build notification.
 type BuildEvent struct {
 	ProjectName   string
@@ -17,8 +23,9 @@ type BuildEvent struct {
 	CommitAuthor  string
 	Duration      time.Duration
 	BuildURL      string
-	ProjectURL    string // Link to the project page in FeatherCI
-	CommitURL     string // Link to view the commit on the git provider
+	ProjectURL    string       // Link to the project page in FeatherCI
+	CommitURL     string       // Link to view the commit on the git provider
+	FailedSteps   []FailedStep // Steps that failed, with log tails
 }
 
 // ShortSHA returns the first 8 characters of the commit SHA.

@@ -61,7 +61,7 @@ func TestCalculate_LinearChain(t *testing.T) {
 		}
 	}
 
-	// Should have 2 edges: A→B and B→C
+	// Should have 2 edges: A→B and B→C (each is a separate group-to-group edge)
 	if len(layout.Edges) != 2 {
 		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
 	}
@@ -76,7 +76,7 @@ func TestCalculate_LinearChain(t *testing.T) {
 }
 
 func TestCalculate_FanOut(t *testing.T) {
-	// A → B, A → C
+	// A → B, A → C (B and C have same deps ["a"] → same group)
 	steps := []*models.BuildStep{
 		makeStep("a"),
 		makeStep("b", "a"),
@@ -99,14 +99,14 @@ func TestCalculate_FanOut(t *testing.T) {
 		t.Errorf("group 1: expected 2 nodes, got %d", len(layout.Groups[1].Nodes))
 	}
 
-	// 2 edges: A→B and A→C (node-level, not group-level)
-	if len(layout.Edges) != 2 {
-		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
+	// 1 edge: group0 → group1 (same dep set, collapsed to one edge)
+	if len(layout.Edges) != 1 {
+		t.Errorf("expected 1 edge, got %d", len(layout.Edges))
 	}
 }
 
 func TestCalculate_FanIn(t *testing.T) {
-	// A, B → C
+	// A, B → C (A and B have same deps [] → same group)
 	steps := []*models.BuildStep{
 		makeStep("a"),
 		makeStep("b"),
@@ -129,14 +129,15 @@ func TestCalculate_FanIn(t *testing.T) {
 		t.Errorf("group 1: expected 1 node, got %d", len(layout.Groups[1].Nodes))
 	}
 
-	// 2 edges: A→C and B→C (node-level, not group-level)
-	if len(layout.Edges) != 2 {
-		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
+	// 1 edge: group0 → group1 (A,B in same source group)
+	if len(layout.Edges) != 1 {
+		t.Errorf("expected 1 edge, got %d", len(layout.Edges))
 	}
 }
 
 func TestCalculate_Diamond(t *testing.T) {
 	// A → B, A → C, B → D, C → D
+	// B and C share deps ["a"] → same group
 	steps := []*models.BuildStep{
 		makeStep("a"),
 		makeStep("b", "a"),
@@ -163,9 +164,9 @@ func TestCalculate_Diamond(t *testing.T) {
 		t.Errorf("group 2: expected 1 node, got %d", len(layout.Groups[2].Nodes))
 	}
 
-	// 4 edges: A→B, A→C, B→D, C→D (node-level)
-	if len(layout.Edges) != 4 {
-		t.Errorf("expected 4 edges, got %d", len(layout.Edges))
+	// 2 edges: group0→group1, group1→group2
+	if len(layout.Edges) != 2 {
+		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
 	}
 }
 
@@ -182,7 +183,7 @@ func TestCalculate_MixedDepsAndNoDeps(t *testing.T) {
 		t.Fatal("expected non-nil layout")
 	}
 
-	// Column 0: [A, C], Column 1: [B]
+	// Column 0: [A, C] (same deps: none), Column 1: [B]
 	if len(layout.Groups) != 2 {
 		t.Fatalf("expected 2 groups, got %d", len(layout.Groups))
 	}
@@ -230,23 +231,21 @@ func TestCalculate_ConnectionPoints(t *testing.T) {
 	}
 
 	for i, g := range layout.Groups {
-		for j, n := range g.Nodes {
-			// LeftX should be at group X
-			if n.LeftX != g.X {
-				t.Errorf("group %d node %d: LeftX %d != group X %d", i, j, n.LeftX, g.X)
-			}
-			// RightX should be at group X + Width
-			if n.RightX != g.X+g.Width {
-				t.Errorf("group %d node %d: RightX %d != group X+Width %d", i, j, n.RightX, g.X+g.Width)
-			}
-			// LeftY and RightY should be node's vertical center
-			expectedY := n.Y + 18 // nodeHeight/2 = 36/2 = 18
-			if n.LeftY != expectedY {
-				t.Errorf("group %d node %d: LeftY %d != node center %d", i, j, n.LeftY, expectedY)
-			}
-			if n.RightY != expectedY {
-				t.Errorf("group %d node %d: RightY %d != node center %d", i, j, n.RightY, expectedY)
-			}
+		// LeftX should be at group X
+		if g.LeftX != g.X {
+			t.Errorf("group %d: LeftX %d != X %d", i, g.LeftX, g.X)
+		}
+		// RightX should be at group X + Width
+		if g.RightX != g.X+g.Width {
+			t.Errorf("group %d: RightX %d != X+Width %d", i, g.RightX, g.X+g.Width)
+		}
+		// LeftY and RightY should be vertical center of group
+		expectedY := g.Y + g.Height/2
+		if g.LeftY != expectedY {
+			t.Errorf("group %d: LeftY %d != center %d", i, g.LeftY, expectedY)
+		}
+		if g.RightY != expectedY {
+			t.Errorf("group %d: RightY %d != center %d", i, g.RightY, expectedY)
 		}
 	}
 }
@@ -271,9 +270,9 @@ func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
 		t.Fatalf("expected 3 groups, got %d", len(layout.Groups))
 	}
 
-	// 3 edges: build-docker→deploy, simple→deploy, simple→flipper
-	if len(layout.Edges) != 3 {
-		t.Errorf("expected 3 edges, got %d", len(layout.Edges))
+	// 2 edges: col0-group → flipper-group, col0-group → deploy-group
+	if len(layout.Edges) != 2 {
+		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
 	}
 
 	// Verify edges target different Y positions (flipper and deploy-to-staging are in different groups)
@@ -282,7 +281,7 @@ func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
 		edgeYs[e.ToY] = true
 	}
 	if len(edgeYs) < 2 {
-		t.Error("expected edges to target different Y positions for different nodes")
+		t.Error("expected edges to target different Y positions for different groups")
 	}
 }
 

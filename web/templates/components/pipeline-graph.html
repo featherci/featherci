@@ -92,13 +92,11 @@
 
     <!-- Connection dots (on top of groups, GitHub-style port circles) -->
     {{range $layout.Groups}}
-    {{range .Nodes}}
     {{if .HasIncoming}}
     <circle cx="{{.LeftX}}" cy="{{.LeftY}}" r="5" fill="white" stroke="#D1D5DB" stroke-width="1.5"/>
     {{end}}
     {{if .HasOutgoing}}
     <circle cx="{{.RightX}}" cy="{{.RightY}}" r="5" fill="white" stroke="#D1D5DB" stroke-width="1.5"/>
-    {{end}}
     {{end}}
     {{end}}
   </svg>

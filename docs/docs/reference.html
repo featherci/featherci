@@ -250,6 +250,7 @@ steps: []Step       # Steps to execute (required)</code></pre>
             <tr><td><code>cache</code></td><td>object</td><td>No</td><td>&mdash;</td><td>Build cache configuration</td></tr>
             <tr><td><code>secrets</code></td><td>[]string</td><td>No</td><td>&mdash;</td><td>Secret names to inject as env vars</td></tr>
             <tr><td><code>services</code></td><td>[]object</td><td>No</td><td>&mdash;</td><td>Sidecar containers (databases, caches) to run alongside the step</td></tr>
+            <tr><td><code>docker</code></td><td>bool</td><td>No</td><td><code>false</code></td><td>Mount the host Docker socket (<code>/var/run/docker.sock</code>) into the container for <code>docker build</code>, <code>docker push</code>, etc.</td></tr>
           </tbody>
         </table>
 

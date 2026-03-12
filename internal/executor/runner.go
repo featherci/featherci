@@ -94,14 +94,22 @@ func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, worksp
 		})
 	}
 
+	bindMounts := []BindMount{
+		{Source: workspacePath, Target: "/workspace"},
+	}
+	if step.Docker {
+		bindMounts = append(bindMounts, BindMount{
+			Source: "/var/run/docker.sock",
+			Target: "/var/run/docker.sock",
+		})
+	}
+
 	opts := RunOptions{
-		Image:    image,
-		Commands: step.Commands,
-		Env:      step.Env,
-		WorkDir:  workDir,
-		BindMounts: []BindMount{
-			{Source: workspacePath, Target: "/workspace"},
-		},
+		Image:      image,
+		Commands:   step.Commands,
+		Env:        step.Env,
+		WorkDir:    workDir,
+		BindMounts: bindMounts,
 		Timeout:  timeout,
 		Output:   output,
 		Services: services,

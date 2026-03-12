@@ -212,6 +212,14 @@ steps:
     type: approval
     depends_on: [build, integration]
 
+  - name: build-docker
+    image: docker:27
+    depends_on: [test]
+    docker: true
+    commands:
+      - docker build -t myapp .
+      - docker push myapp
+
   - name: deploy
     image: alpine:latest
     depends_on: [deploy-approval]
@@ -246,6 +254,7 @@ Service containers run on a shared Docker network and are accessible from the st
 | `cache.key` | Cache key template (supports `{{ checksum "file" }}`) |
 | `cache.paths` | Directories to cache between builds |
 | `services` | Sidecar containers (e.g., databases) accessible by hostname |
+| `docker` | Mount Docker socket into the container (`true`/`false`) |
 
 ## Secrets Management
 

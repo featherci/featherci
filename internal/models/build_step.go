@@ -61,6 +61,7 @@ type BuildStep struct {
 	ServicesJSON   string `db:"services_json"`
 	WorkingDir     string `db:"working_dir"`
 	TimeoutMinutes int    `db:"timeout_minutes"`
+	Docker         bool   `db:"docker"`
 
 	// Deserialized fields (not stored directly)
 	Commands         []string          `db:"-"`
@@ -244,8 +245,8 @@ func (r *SQLiteBuildStepRepository) Create(ctx context.Context, step *BuildStep)
 	}
 
 	query := `
-		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, services_json, working_dir, timeout_minutes, condition_expr)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, services_json, working_dir, timeout_minutes, condition_expr, docker)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	result, err := r.db.ExecContext(ctx, query,
 		step.BuildID,
@@ -261,6 +262,7 @@ func (r *SQLiteBuildStepRepository) Create(ctx context.Context, step *BuildStep)
 		step.WorkingDir,
 		step.TimeoutMinutes,
 		step.ConditionExpr,
+		step.Docker,
 	)
 	if err != nil {
 		return err
@@ -284,8 +286,8 @@ func (r *SQLiteBuildStepRepository) CreateBatch(ctx context.Context, steps []*Bu
 	defer tx.Rollback()
 
 	query := `
-		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, services_json, working_dir, timeout_minutes, condition_expr)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO build_steps (build_id, name, image, status, requires_approval, commands_json, env_json, depends_on_json, cache_json, services_json, working_dir, timeout_minutes, condition_expr, docker)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 	stmt, err := tx.PreparexContext(ctx, query)
 	if err != nil {
@@ -312,6 +314,7 @@ func (r *SQLiteBuildStepRepository) CreateBatch(ctx context.Context, steps []*Bu
 			step.WorkingDir,
 			step.TimeoutMinutes,
 			step.ConditionExpr,
+			step.Docker,
 		)
 		if err != nil {
 			return err

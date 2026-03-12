@@ -77,7 +77,8 @@ func setupBuildTestDB(t *testing.T) *sqlx.DB {
 			services_json TEXT DEFAULT '',
 			working_dir TEXT DEFAULT '',
 			timeout_minutes INTEGER DEFAULT 60,
-			condition_expr TEXT DEFAULT ''
+			condition_expr TEXT DEFAULT '',
+			docker BOOLEAN NOT NULL DEFAULT 0
 		);
 
 		CREATE TABLE step_dependencies (

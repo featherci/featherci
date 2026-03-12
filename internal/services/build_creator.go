@@ -166,6 +166,7 @@ func (c *BuildCreator) createSteps(ctx context.Context, build *models.Build, wf 
 			Cache:            cache,
 			Services:         services,
 			ConditionExpr:    s.If,
+			Docker:           s.Docker,
 		}
 
 		steps = append(steps, step)

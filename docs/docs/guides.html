@@ -268,6 +268,19 @@ steps:
 
         <p>The hostname is derived from the image name: <code>mysql:8.0</code> &rarr; <code>mysql</code>, <code>redis:7</code> &rarr; <code>redis</code>. Services are started before the step and cleaned up automatically after it completes.</p>
 
+        <h3>Docker Socket Access</h3>
+
+        <p>Set <code>docker: true</code> on a step to mount the host Docker socket into the container. This lets you run <code>docker build</code>, <code>docker push</code>, and other Docker commands from within a build step.</p>
+
+        <pre><code>- name: build-docker
+  image: docker:27
+  docker: true
+  commands:
+    - docker build -t myapp:latest .
+    - docker push myapp:latest</code></pre>
+
+        <p>This mounts <code>/var/run/docker.sock</code> from the host into the step container (the sibling container pattern). The host must have Docker running and the socket accessible.</p>
+
         <h3>Full Example</h3>
 
         <pre><code>name: Production Pipeline

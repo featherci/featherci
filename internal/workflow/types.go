@@ -135,6 +135,10 @@ type Step struct {
 	// Services is a list of sidecar containers to run alongside this step.
 	// Each service is accessible by its image name (without tag) as hostname.
 	Services []ServiceConfig `yaml:"services"`
+
+	// Docker mounts the host Docker socket into the step container,
+	// allowing docker build, docker push, etc.
+	Docker bool `yaml:"docker"`
 }
 
 // ServiceConfig defines a sidecar container to run alongside a step.

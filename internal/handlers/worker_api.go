@@ -243,6 +243,28 @@ func (h *WorkerAPIHandler) ClaimStep(w http.ResponseWriter, r *http.Request) {
 	h.jsonOK(w, map[string]string{"status": "claimed"})
 }
 
+// SetLogPath saves the log file path for a step so the UI can stream logs.
+// POST /api/worker/steps/{id}/logpath
+func (h *WorkerAPIHandler) SetLogPath(w http.ResponseWriter, r *http.Request) {
+	stepID, err := h.pathInt64(r, "id")
+	if err != nil {
+		h.jsonError(w, "invalid step ID", http.StatusBadRequest)
+		return
+	}
+	var req struct {
+		LogPath string `json:"log_path"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.jsonError(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+	if err := h.steps.SetLogPath(r.Context(), stepID, req.LogPath); err != nil {
+		h.jsonError(w, "failed to set log path", http.StatusInternalServerError)
+		return
+	}
+	h.jsonOK(w, map[string]string{"status": "ok"})
+}
+
 // CompleteStep records step completion and triggers build advancement.
 // POST /api/worker/steps/{id}/complete
 func (h *WorkerAPIHandler) CompleteStep(w http.ResponseWriter, r *http.Request) {

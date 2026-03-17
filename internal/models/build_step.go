@@ -218,6 +218,7 @@ type BuildStepRepository interface {
 	Update(ctx context.Context, step *BuildStep) error
 	UpdateStatus(ctx context.Context, id int64, status StepStatus) error
 	SetStarted(ctx context.Context, id int64, workerID string) error
+	SetLogPath(ctx context.Context, id int64, logPath string) error
 	SetFinished(ctx context.Context, id int64, status StepStatus, exitCode *int, logPath string) error
 	SetApproval(ctx context.Context, id int64, userID int64) error
 	AddDependency(ctx context.Context, stepID, dependsOnID int64) error
@@ -498,6 +499,23 @@ func (r *SQLiteBuildStepRepository) SetStarted(ctx context.Context, id int64, wo
 	now := time.Now()
 	query := `UPDATE build_steps SET status = 'running', started_at = ?, worker_id = ? WHERE id = ?`
 	result, err := r.db.ExecContext(ctx, query, now, workerID, id)
+	if err != nil {
+		return err
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SetLogPath saves the log file path for a running step so the UI can stream logs.
+func (r *SQLiteBuildStepRepository) SetLogPath(ctx context.Context, id int64, logPath string) error {
+	query := `UPDATE build_steps SET log_path = ? WHERE id = ?`
+	result, err := r.db.ExecContext(ctx, query, logPath, id)
 	if err != nil {
 		return err
 	}

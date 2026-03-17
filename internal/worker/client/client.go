@@ -71,6 +71,12 @@ func (s *StepClient) SetStarted(ctx context.Context, id int64, workerID string) 
 		map[string]string{"worker_id": workerID}, nil)
 }
 
+// SetLogPath saves the log path on the master so the UI can stream logs.
+func (s *StepClient) SetLogPath(ctx context.Context, id int64, logPath string) error {
+	return s.c.post(ctx, fmt.Sprintf("/api/worker/steps/%d/logpath", id),
+		map[string]string{"log_path": logPath}, nil)
+}
+
 // SetFinished reports step completion to the master.
 func (s *StepClient) SetFinished(ctx context.Context, id int64, status models.StepStatus, exitCode *int, logPath string) error {
 	return s.c.post(ctx, fmt.Sprintf("/api/worker/steps/%d/complete", id),

@@ -68,6 +68,10 @@ func (m *mockStepRepo) SetStarted(_ context.Context, _ int64, _ string) error {
 	return m.setStarted
 }
 
+func (m *mockStepRepo) SetLogPath(_ context.Context, _ int64, _ string) error {
+	return nil
+}
+
 func (m *mockStepRepo) SetFinished(_ context.Context, _ int64, _ models.StepStatus, _ *int, _ string) error {
 	return m.setFinished
 }

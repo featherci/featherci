@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 type stepRepo interface {
 	ListReady(ctx context.Context) ([]*models.BuildStep, error)
 	SetStarted(ctx context.Context, id int64, workerID string) error
+	SetLogPath(ctx context.Context, id int64, logPath string) error
 	SetFinished(ctx context.Context, id int64, status models.StepStatus, exitCode *int, logPath string) error
 	UpdateReadySteps(ctx context.Context, buildID int64) (int64, error)
 	SkipDependentSteps(ctx context.Context, buildID int64) (int64, error)
@@ -404,6 +406,18 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 		step.CacheResolvedKey = cache.ResolveKey(step.Cache.Key, project.ID, branch, wsPath)
 	}
 
+	// Compute log path and persist it so the UI can stream logs during execution.
+	logDir := filepath.Join(filepath.Dir(wsPath), "logs")
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		log.Error("failed to create log dir", "error", err)
+		w.failStepWithContext(ctx, step, project, build, log)
+		return
+	}
+	logPath := filepath.Join(logDir, fmt.Sprintf("%d.log", step.ID))
+	if err := w.steps.SetLogPath(ctx, step.ID, logPath); err != nil {
+		log.Error("failed to set log path", "error", err)
+	}
+
 	// Update worker status to busy
 	_ = w.workers.UpdateStatus(ctx, w.id, models.WorkerStatusBusy, &step.ID)
 
@@ -412,7 +426,7 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 
 	// Run step
 	log.Info("running step", "name", step.Name)
-	result := w.runner.RunStep(ctx, step, wsPath, secretValues)
+	result := w.runner.RunStep(ctx, step, wsPath, logPath, secretValues)
 
 	// Persist result
 	if err := w.steps.SetFinished(ctx, step.ID, result.Status, result.ExitCode, result.LogPath); err != nil {

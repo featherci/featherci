@@ -401,6 +401,59 @@ func TestBuildStepRepository_SetStartedAndFinished(t *testing.T) {
 	}
 }
 
+func TestBuildStepRepository_SetLogPath(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{
+		ProjectID: project.ID,
+		CommitSHA: "abc123",
+		Status:    BuildStatusPending,
+	}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	step := &BuildStep{
+		BuildID:  build.ID,
+		Name:     "test",
+		Image:    &image,
+		Status:   StepStatusReady,
+		Commands: []string{"go test ./..."},
+	}
+	if err := stepRepo.Create(ctx, step); err != nil {
+		t.Fatalf("Create step error = %v", err)
+	}
+
+	// Initially log_path should be nil
+	got, _ := stepRepo.GetByID(ctx, step.ID)
+	if got.LogPath != nil {
+		t.Errorf("LogPath = %v, want nil", got.LogPath)
+	}
+
+	// Set log path
+	if err := stepRepo.SetLogPath(ctx, step.ID, "/logs/42.log"); err != nil {
+		t.Fatalf("SetLogPath() error = %v", err)
+	}
+
+	got, _ = stepRepo.GetByID(ctx, step.ID)
+	if got.LogPath == nil || *got.LogPath != "/logs/42.log" {
+		t.Errorf("LogPath = %v, want %q", got.LogPath, "/logs/42.log")
+	}
+
+	// SetLogPath on non-existent step should return ErrNotFound
+	err := stepRepo.SetLogPath(ctx, 99999, "/logs/nope.log")
+	if err != ErrNotFound {
+		t.Errorf("SetLogPath on non-existent step: err = %v, want ErrNotFound", err)
+	}
+}
+
 func TestBuildStepRepository_SetApproval(t *testing.T) {
 	db := setupBuildTestDB(t)
 	defer db.Close()

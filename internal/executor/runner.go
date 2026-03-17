@@ -40,14 +40,7 @@ type StepResult struct {
 // RunStep executes a build step inside a container and returns the result.
 // The caller is responsible for updating the database with the result.
 // secretValues contains the raw secret values to mask in log output.
-func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, workspacePath string, secretValues []string) *StepResult {
-	// Set up log directory and writer.
-	logDir := filepath.Join(filepath.Dir(workspacePath), "logs")
-	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return failedResult(fmt.Sprintf("creating log dir: %v", err))
-	}
-	logPath := filepath.Join(logDir, fmt.Sprintf("%d.log", step.ID))
-
+func (r *StepRunner) RunStep(ctx context.Context, step *models.BuildStep, workspacePath string, logPath string, secretValues []string) *StepResult {
 	// Determine image.
 	image := "alpine:latest"
 	if step.Image != nil && *step.Image != "" {

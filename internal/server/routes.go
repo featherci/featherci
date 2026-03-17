@@ -151,6 +151,7 @@ func (s *Server) setupRoutes() http.Handler {
 		workerAuth := middleware.WorkerAuth(s.config.WorkerSecret)
 		mux.Handle("GET /api/worker/steps/ready", workerAuth(http.HandlerFunc(s.workerAPI.ListReadySteps)))
 		mux.Handle("POST /api/worker/steps/{id}/claim", workerAuth(http.HandlerFunc(s.workerAPI.ClaimStep)))
+		mux.Handle("POST /api/worker/steps/{id}/logpath", workerAuth(http.HandlerFunc(s.workerAPI.SetLogPath)))
 		mux.Handle("POST /api/worker/steps/{id}/complete", workerAuth(http.HandlerFunc(s.workerAPI.CompleteStep)))
 		mux.Handle("POST /api/worker/steps/{id}/log", workerAuth(http.HandlerFunc(s.workerAPI.UploadLog)))
 		mux.Handle("GET /api/worker/builds/{id}", workerAuth(http.HandlerFunc(s.workerAPI.GetBuild)))

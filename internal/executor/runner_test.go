@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -34,6 +35,18 @@ func (m *mockExecutor) Stop(ctx context.Context, containerID string) error {
 
 func strPtr(s string) *string { return &s }
 
+// setupTestLogPath creates workspace and log dirs and returns (workspace, logPath).
+func setupTestLogPath(t *testing.T, stepID int64) (string, string) {
+	t.Helper()
+	dir := t.TempDir()
+	workspace := filepath.Join(dir, "workspace")
+	os.MkdirAll(workspace, 0755)
+	logDir := filepath.Join(dir, "logs")
+	os.MkdirAll(logDir, 0755)
+	logPath := filepath.Join(logDir, fmt.Sprintf("%d.log", stepID))
+	return workspace, logPath
+}
+
 func TestStepRunner_RunStep_Success(t *testing.T) {
 	var capturedOpts RunOptions
 	exec := &mockExecutor{
@@ -49,9 +62,7 @@ func TestStepRunner_RunStep_Success(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 42)
 
 	step := &models.BuildStep{
 		ID:             42,
@@ -62,7 +73,7 @@ func TestStepRunner_RunStep_Success(t *testing.T) {
 		TimeoutMinutes: 30,
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace, nil)
+	result := runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
 	if result.Status != models.StepStatusSuccess {
 		t.Errorf("expected success, got %s", result.Status)
@@ -97,9 +108,7 @@ func TestStepRunner_RunStep_Failure(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 1)
 
 	step := &models.BuildStep{
 		ID:       1,
@@ -107,7 +116,7 @@ func TestStepRunner_RunStep_Failure(t *testing.T) {
 		Commands: []string{"false"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace, nil)
+	result := runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
 	if result.Status != models.StepStatusFailure {
 		t.Errorf("expected failure, got %s", result.Status)
@@ -125,9 +134,7 @@ func TestStepRunner_RunStep_ExecutorError(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 1)
 
 	step := &models.BuildStep{
 		ID:       1,
@@ -135,7 +142,7 @@ func TestStepRunner_RunStep_ExecutorError(t *testing.T) {
 		Commands: []string{"echo hi"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace, nil)
+	result := runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
 	if result.Status != models.StepStatusFailure {
 		t.Errorf("expected failure, got %s", result.Status)
@@ -164,16 +171,14 @@ func TestStepRunner_RunStep_DefaultImage(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 1)
 
 	step := &models.BuildStep{
 		ID:       1,
 		Commands: []string{"echo hi"},
 	}
 
-	runner.RunStep(context.Background(), step, workspace, nil)
+	runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
 	if capturedOpts.Image != "alpine:latest" {
 		t.Errorf("expected default image alpine:latest, got %s", capturedOpts.Image)
@@ -190,9 +195,7 @@ func TestStepRunner_RunStep_DefaultWorkDir(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 1)
 
 	step := &models.BuildStep{
 		ID:       1,
@@ -200,7 +203,7 @@ func TestStepRunner_RunStep_DefaultWorkDir(t *testing.T) {
 		Commands: []string{"pwd"},
 	}
 
-	runner.RunStep(context.Background(), step, workspace, nil)
+	runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
 	if capturedOpts.WorkDir != "/workspace" {
 		t.Errorf("expected default workdir /workspace, got %s", capturedOpts.WorkDir)
@@ -211,9 +214,7 @@ func TestStepRunner_RunStep_LogPath(t *testing.T) {
 	exec := &mockExecutor{}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 99)
 
 	step := &models.BuildStep{
 		ID:       99,
@@ -221,12 +222,10 @@ func TestStepRunner_RunStep_LogPath(t *testing.T) {
 		Commands: []string{"echo hi"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace, nil)
+	result := runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
-	expectedLogDir := filepath.Join(dir, "logs")
-	expectedLogPath := filepath.Join(expectedLogDir, "99.log")
-	if result.LogPath != expectedLogPath {
-		t.Errorf("expected log path %s, got %s", expectedLogPath, result.LogPath)
+	if result.LogPath != logPath {
+		t.Errorf("expected log path %s, got %s", logPath, result.LogPath)
 	}
 }
 
@@ -242,9 +241,7 @@ func TestStepRunner_RunStep_OutputCapture(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 50)
 
 	step := &models.BuildStep{
 		ID:       50,
@@ -252,7 +249,7 @@ func TestStepRunner_RunStep_OutputCapture(t *testing.T) {
 		Commands: []string{"echo hello"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace, nil)
+	result := runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
 	if result.Status != models.StepStatusSuccess {
 		t.Errorf("expected success, got %s", result.Status)
@@ -281,9 +278,7 @@ func TestStepRunner_RunStep_DefaultTimeout(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 1)
 
 	step := &models.BuildStep{
 		ID:       1,
@@ -292,7 +287,7 @@ func TestStepRunner_RunStep_DefaultTimeout(t *testing.T) {
 		// TimeoutMinutes defaults to 0, GetTimeout() returns 60
 	}
 
-	runner.RunStep(context.Background(), step, workspace, nil)
+	runner.RunStep(context.Background(), step, workspace, logPath, nil)
 
 	if capturedOpts.Timeout != 60*time.Minute {
 		t.Errorf("expected 60m default timeout, got %s", capturedOpts.Timeout)
@@ -311,9 +306,7 @@ func TestStepRunner_RunStep_SecretMasking(t *testing.T) {
 	}
 	runner := NewStepRunner(exec, nil)
 
-	dir := t.TempDir()
-	workspace := filepath.Join(dir, "workspace")
-	os.MkdirAll(workspace, 0755)
+	workspace, logPath := setupTestLogPath(t, 77)
 
 	step := &models.BuildStep{
 		ID:       77,
@@ -321,7 +314,7 @@ func TestStepRunner_RunStep_SecretMasking(t *testing.T) {
 		Commands: []string{"echo secrets"},
 	}
 
-	result := runner.RunStep(context.Background(), step, workspace, []string{"supersecret123", "hunter2"})
+	result := runner.RunStep(context.Background(), step, workspace, logPath, []string{"supersecret123", "hunter2"})
 
 	if result.Status != models.StepStatusSuccess {
 		t.Fatalf("expected success, got %s", result.Status)

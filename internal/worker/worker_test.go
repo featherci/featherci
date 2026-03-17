@@ -44,6 +44,10 @@ func (m *mockStepRepo) SetStarted(_ context.Context, id int64, _ string) error {
 	return nil
 }
 
+func (m *mockStepRepo) SetLogPath(_ context.Context, _ int64, _ string) error {
+	return nil
+}
+
 func (m *mockStepRepo) SetFinished(_ context.Context, id int64, status models.StepStatus, exitCode *int, logPath string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

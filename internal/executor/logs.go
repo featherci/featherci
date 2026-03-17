@@ -37,6 +37,8 @@ func (lw *LogWriter) Write(p []byte) (int, error) {
 	if err != nil {
 		return n, err
 	}
+	// Flush to disk so the UI can read partial output during execution.
+	_ = lw.writer.Flush()
 
 	// Count newlines for line tracking.
 	for _, b := range p[:n] {

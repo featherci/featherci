@@ -171,8 +171,8 @@ func TestDockerExecutor_Run_ContainerConfig(t *testing.T) {
 	if capturedConfig.Entrypoint[0] != expectedCmd {
 		t.Errorf("expected entrypoint[0] %s, got %s", expectedCmd, capturedConfig.Entrypoint[0])
 	}
-	if !strings.Contains(capturedConfig.Entrypoint[2], "npm install && npm test") {
-		t.Errorf("expected commands joined with &&, got %s", capturedConfig.Entrypoint[2])
+	if !strings.Contains(capturedConfig.Entrypoint[2], "set -e\nnpm install\nnpm test") {
+		t.Errorf("expected commands joined with newlines and set -e, got %s", capturedConfig.Entrypoint[2])
 	}
 
 	// Check env (sorted).

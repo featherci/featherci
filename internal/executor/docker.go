@@ -73,7 +73,9 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 	}
 
 	// Wrap commands in a single shell invocation.
-	shellCmd := strings.Join(opts.Commands, " && ")
+	// Use newline separation with set -e instead of && chaining so that
+	// multi-line commands (from YAML literal blocks) are preserved correctly.
+	shellCmd := "set -e\n" + strings.Join(opts.Commands, "\n")
 	entrypoint := []string{"/bin/sh", "-c", shellCmd}
 
 	config := &container.Config{

@@ -834,10 +834,10 @@ func resolveGitProvider(project *models.Project) string {
 
 func formatDurationShort(d time.Duration) string {
 	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
+		return "<1s"
 	}
 	if d < time.Minute {
-		return fmt.Sprintf("%.0fs", d.Seconds())
+		return fmt.Sprintf("%ds", int(d.Seconds()))
 	}
 	if d < time.Hour {
 		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%60)

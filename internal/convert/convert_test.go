@@ -650,6 +650,9 @@ workflows:
 	if !found["bundle install"] {
 		t.Error("expected 'bundle install' from ruby/install-deps expansion")
 	}
+	if !found[`curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs`] {
+		t.Error("expected node install command from node/install expansion")
+	}
 	if !found["yarn install"] {
 		t.Error("expected 'yarn install' from node/install-packages with yarn")
 	}
@@ -846,6 +849,76 @@ workflows:
 
 	if _, err := os.Stat(filepath.Join(circleDir, "config.yml.bak")); err != nil {
 		t.Error("backup file should exist:", err)
+	}
+}
+
+func TestReplaceSourceEnvVars_CircleCI(t *testing.T) {
+	result := &Result{
+		Source: SourceCircleCI,
+		Workflow: &workflow.Workflow{
+			Steps: []workflow.Step{
+				{
+					Name: "deploy",
+					Commands: []string{
+						"docker build -t myapp:$CIRCLE_SHA1 .",
+						"docker push myapp:${CIRCLE_SHA1}",
+						"./bin/kamal deploy --version=$CIRCLE_SHA1",
+						"echo branch is $CIRCLE_BRANCH",
+						"echo build $CIRCLE_BUILD_NUM for $CIRCLE_PROJECT_REPONAME",
+						"echo no vars here",
+					},
+				},
+			},
+		},
+	}
+
+	replaceSourceEnvVars(result)
+
+	expected := []string{
+		"docker build -t myapp:$FEATHERCI_COMMIT_SHA .",
+		"docker push myapp:${FEATHERCI_COMMIT_SHA}",
+		"./bin/kamal deploy --version=$FEATHERCI_COMMIT_SHA",
+		"echo branch is $FEATHERCI_BRANCH",
+		"echo build $FEATHERCI_BUILD_NUMBER for $FEATHERCI_PROJECT_NAME",
+		"echo no vars here",
+	}
+
+	for i, exp := range expected {
+		if result.Workflow.Steps[0].Commands[i] != exp {
+			t.Errorf("command[%d]:\n  got:  %s\n  want: %s", i, result.Workflow.Steps[0].Commands[i], exp)
+		}
+	}
+}
+
+func TestReplaceSourceEnvVars_GitHub(t *testing.T) {
+	result := &Result{
+		Source: SourceGitHub,
+		Workflow: &workflow.Workflow{
+			Steps: []workflow.Step{
+				{
+					Name: "build",
+					Commands: []string{
+						"echo $GITHUB_SHA",
+						"echo ${GITHUB_REF_NAME}",
+						"echo $GITHUB_RUN_NUMBER",
+					},
+				},
+			},
+		},
+	}
+
+	replaceSourceEnvVars(result)
+
+	expected := []string{
+		"echo $FEATHERCI_COMMIT_SHA",
+		"echo ${FEATHERCI_BRANCH}",
+		"echo $FEATHERCI_BUILD_NUMBER",
+	}
+
+	for i, exp := range expected {
+		if result.Workflow.Steps[0].Commands[i] != exp {
+			t.Errorf("command[%d]:\n  got:  %s\n  want: %s", i, result.Workflow.Steps[0].Commands[i], exp)
+		}
 	}
 }
 

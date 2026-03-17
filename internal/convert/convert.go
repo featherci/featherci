@@ -86,6 +86,9 @@ func Run(dir string) error {
 		return fmt.Errorf("conversion failed: %w", err)
 	}
 
+	// Replace CI-platform env vars with FeatherCI equivalents in all commands
+	replaceSourceEnvVars(result)
+
 	printWarnings(result.Warnings)
 
 	// Write the converted workflow
@@ -315,6 +318,45 @@ func marshalClean(wf *workflow.Workflow) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// ciEnvReplacements maps source CI environment variables to their FeatherCI equivalents.
+// Each source platform has its own set of variables.
+var ciEnvReplacements = map[Source][][2]string{
+	SourceCircleCI: {
+		{"CIRCLE_SHA1", "FEATHERCI_COMMIT_SHA"},
+		{"CIRCLE_BRANCH", "FEATHERCI_BRANCH"},
+		{"CIRCLE_BUILD_NUM", "FEATHERCI_BUILD_NUMBER"},
+		{"CIRCLE_PROJECT_REPONAME", "FEATHERCI_PROJECT_NAME"},
+	},
+	SourceGitHub: {
+		{"GITHUB_SHA", "FEATHERCI_COMMIT_SHA"},
+		{"GITHUB_REF_NAME", "FEATHERCI_BRANCH"},
+		{"GITHUB_RUN_NUMBER", "FEATHERCI_BUILD_NUMBER"},
+	},
+}
+
+// replaceSourceEnvVars replaces CI-platform-specific environment variable
+// references in all step commands with their FeatherCI equivalents.
+func replaceSourceEnvVars(r *Result) {
+	replacements := ciEnvReplacements[r.Source]
+	if len(replacements) == 0 {
+		return
+	}
+
+	// Build a strings.Replacer for $VAR and ${VAR} forms
+	args := make([]string, 0, len(replacements)*4)
+	for _, pair := range replacements {
+		args = append(args, "$"+pair[0], "$"+pair[1])
+		args = append(args, "${"+pair[0]+"}", "${"+pair[1]+"}")
+	}
+	replacer := strings.NewReplacer(args...)
+
+	for i, step := range r.Workflow.Steps {
+		for j, cmd := range step.Commands {
+			r.Workflow.Steps[i].Commands[j] = replacer.Replace(cmd)
+		}
+	}
 }
 
 // sanitizeName converts a string to a valid FeatherCI step name (alphanumeric, hyphens, underscores).

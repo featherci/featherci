@@ -192,7 +192,8 @@ var knownOrbCommands = map[string][]string{
 		"bundle install",
 	},
 	"node/install": {
-		"# Node.js is expected to be available in the Docker image",
+		"# Install Node.js (equivalent of circleci/node orb install)",
+		`curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs`,
 	},
 	"node/install-packages": {
 		"npm install",

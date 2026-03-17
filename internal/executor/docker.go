@@ -81,12 +81,8 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 	innerScript := "set -e\n" + strings.Join(opts.Commands, "\n")
 	// The outer /bin/sh checks for bash and re-execs as a login shell.
 	// Single quotes around the heredoc delimiter prevent variable expansion.
-	// We explicitly source ~/.bashrc because login shells only source
-	// ~/.bash_profile or ~/.profile, and some images (e.g. cimg/*) set up
-	// tools like nvm/rvm/pyenv exclusively in ~/.bashrc.
-	bashSetup := "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi\n"
 	shellCmd := "if [ -x /bin/bash ]; then exec /bin/bash -l <<'FEATHERCI_SCRIPT'\n" +
-		bashSetup + innerScript + "\nFEATHERCI_SCRIPT\nelse\n" + innerScript + "\nfi"
+		innerScript + "\nFEATHERCI_SCRIPT\nelse\n" + innerScript + "\nfi"
 	entrypoint := []string{"/bin/sh", "-c", shellCmd}
 
 	config := &container.Config{

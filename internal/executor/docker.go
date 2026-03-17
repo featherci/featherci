@@ -75,7 +75,14 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 	// Wrap commands in a single shell invocation.
 	// Use newline separation with set -e instead of && chaining so that
 	// multi-line commands (from YAML literal blocks) are preserved correctly.
-	shellCmd := "set -e\n" + strings.Join(opts.Commands, "\n")
+	// When bash is available, use a login shell so profile scripts (nvm, rvm,
+	// pyenv, etc.) are sourced — matching CircleCI cimg image behavior.
+	// Falls back to /bin/sh for minimal images like Alpine.
+	innerScript := "set -e\n" + strings.Join(opts.Commands, "\n")
+	// The outer /bin/sh checks for bash and re-execs as a login shell.
+	// Single quotes around the heredoc delimiter prevent variable expansion.
+	shellCmd := "if [ -x /bin/bash ]; then exec /bin/bash -l <<'FEATHERCI_SCRIPT'\n" +
+		innerScript + "\nFEATHERCI_SCRIPT\nelse\n" + innerScript + "\nfi"
 	entrypoint := []string{"/bin/sh", "-c", shellCmd}
 
 	config := &container.Config{

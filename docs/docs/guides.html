@@ -169,6 +169,19 @@ steps:
         <pre><code>  env:
     DEPLOY_TOKEN: $DEPLOY_TOKEN</code></pre>
 
+        <h3>Built-in CI Variables</h3>
+
+        <p>FeatherCI automatically injects environment variables into every step. Use these instead of provider-specific variables like <code>$CIRCLE_SHA1</code>:</p>
+
+        <pre><code>- name: deploy
+  image: alpine:latest
+  commands:
+    - echo "Building commit $FEATHERCI_COMMIT_SHA on branch $FEATHERCI_BRANCH"
+    - docker build -t myapp:$FEATHERCI_COMMIT_SHA .
+    - docker tag myapp:$FEATHERCI_COMMIT_SHA myapp:latest</code></pre>
+
+        <p>Available variables: <code>FEATHERCI_COMMIT_SHA</code>, <code>FEATHERCI_BRANCH</code>, <code>FEATHERCI_BUILD_NUMBER</code>, <code>FEATHERCI_PROJECT_NAME</code>, <code>CI</code>, <code>FEATHERCI</code>. See the <a href="reference.html#ci-variables">reference</a> for details.</p>
+
         <h3>Working Directory</h3>
 
         <pre><code>- name: test-frontend

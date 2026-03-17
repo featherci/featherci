@@ -256,6 +256,21 @@ Service containers run on a shared Docker network and are accessible from the st
 | `services` | Sidecar containers (e.g., databases) accessible by hostname |
 | `docker` | Mount Docker socket into the container (`true`/`false`) |
 
+### Built-in Environment Variables
+
+FeatherCI automatically injects the following environment variables into every build step:
+
+| Variable | Description |
+|----------|-------------|
+| `FEATHERCI_COMMIT_SHA` | Full commit SHA being built |
+| `FEATHERCI_BRANCH` | Branch name (when available) |
+| `FEATHERCI_BUILD_NUMBER` | Build number (integer) |
+| `FEATHERCI_PROJECT_NAME` | Project name |
+| `CI` | Always `true` |
+| `FEATHERCI` | Always `true` |
+
+Step-defined `env` values take precedence over built-in variables.
+
 ## Secrets Management
 
 <!-- SCREENSHOT: docs/images/secrets.png - Secrets management page showing a list of secrets (names only, not values) with add/delete buttons -->

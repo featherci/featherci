@@ -78,6 +78,7 @@
             <h4 class="font-semibold text-gray-900 mb-2">Reference</h4>
             <ul class="space-y-1">
               <li><a href="reference.html" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Environment Variables</a></li>
+              <li><a href="reference.html#ci-variables" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Built-in CI Variables</a></li>
               <li><a href="reference.html#workflow-schema" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">Workflow Schema</a></li>
               <li><a href="reference.html#api" class="block px-3 py-1.5 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors">API Endpoints</a></li>
             </ul>
@@ -203,6 +204,25 @@
           <li><code>FEATHERCI_WORKER_SECRET</code> is required when mode is <code>master</code> or <code>worker</code></li>
           <li><code>FEATHERCI_GITEA_URL</code> is required when Gitea OAuth credentials are provided</li>
         </ul>
+
+        <hr>
+
+        <!-- Built-in CI Variables -->
+        <h2 id="ci-variables">Built-in CI Variables</h2>
+
+        <p>FeatherCI automatically injects the following environment variables into every build step. These are available alongside any user-defined <code>env</code> variables. If a step defines a variable with the same name, the step value takes precedence.</p>
+
+        <table>
+          <thead><tr><th>Variable</th><th>Description</th><th>Example</th></tr></thead>
+          <tbody>
+            <tr><td><code>FEATHERCI_COMMIT_SHA</code></td><td>Full commit SHA being built</td><td><code>a1b2c3d4e5f6...</code></td></tr>
+            <tr><td><code>FEATHERCI_BRANCH</code></td><td>Branch name (set when available)</td><td><code>main</code></td></tr>
+            <tr><td><code>FEATHERCI_BUILD_NUMBER</code></td><td>Build number (integer as string)</td><td><code>42</code></td></tr>
+            <tr><td><code>FEATHERCI_PROJECT_NAME</code></td><td>Project name in FeatherCI</td><td><code>myorg/myrepo</code></td></tr>
+            <tr><td><code>CI</code></td><td>Always <code>true</code></td><td><code>true</code></td></tr>
+            <tr><td><code>FEATHERCI</code></td><td>Always <code>true</code> &mdash; use to detect FeatherCI specifically</td><td><code>true</code></td></tr>
+          </tbody>
+        </table>
 
         <hr>
 

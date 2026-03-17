@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"strconv"
+
 	"github.com/featherci/featherci/internal/cache"
 	"github.com/featherci/featherci/internal/executor"
 	"github.com/featherci/featherci/internal/models"
@@ -369,6 +371,27 @@ func (w *Worker) executeStep(ctx context.Context, step *models.BuildStep) {
 					step.Env[k] = v
 				}
 			}
+		}
+	}
+
+	// Inject built-in CI environment variables.
+	// Step-defined vars take precedence (already set above).
+	if step.Env == nil {
+		step.Env = make(map[string]string)
+	}
+	ciVars := map[string]string{
+		"FEATHERCI_COMMIT_SHA":    build.CommitSHA,
+		"FEATHERCI_BUILD_NUMBER":  strconv.Itoa(build.BuildNumber),
+		"FEATHERCI_PROJECT_NAME":  project.Name,
+		"CI":                      "true",
+		"FEATHERCI":               "true",
+	}
+	if build.Branch != nil {
+		ciVars["FEATHERCI_BRANCH"] = *build.Branch
+	}
+	for k, v := range ciVars {
+		if _, exists := step.Env[k]; !exists {
+			step.Env[k] = v
 		}
 	}
 

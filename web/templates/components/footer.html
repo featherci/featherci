@@ -11,6 +11,8 @@
                 <span>FeatherCI</span>
                 <span class="text-gray-300">•</span>
                 <span>Lightweight CI/CD</span>
+                <span class="text-gray-300">•</span>
+                <span>{{version}}{{if ne (versionCommit) "unknown"}} ({{truncate (versionCommit) 7}}){{end}}</span>
             </div>
             <div class="flex items-center space-x-4 text-sm text-gray-500">
                 <a href="https://github.com/featherci/featherci" target="_blank" rel="noopener" class="hover:text-gray-700 transition-colors">

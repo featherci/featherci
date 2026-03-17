@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -115,6 +116,7 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 	}
 
 	// Stream container output to the provided writer.
+	var logWg sync.WaitGroup
 	if opts.Output != nil {
 		logReader, err := d.client.ContainerLogs(ctx, containerID, container.LogsOptions{
 			ShowStdout: true,
@@ -122,7 +124,9 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 			Follow:     true,
 		})
 		if err == nil {
+			logWg.Add(1)
 			go func() {
+				defer logWg.Done()
 				defer logReader.Close()
 				// StdCopy demuxes Docker's multiplexed stdout/stderr stream.
 				_, _ = stdcopy.StdCopy(opts.Output, opts.Output, logReader)
@@ -151,6 +155,7 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 		if waitResp.Error != nil && strings.Contains(waitResp.Error.Message, "OOM") {
 			result.OOMKilled = true
 		}
+		logWg.Wait()
 		return result, nil
 
 	case err := <-errCh:

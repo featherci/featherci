@@ -636,7 +636,7 @@ func (r *SQLiteBuildStepRepository) UpdateReadySteps(ctx context.Context, buildI
 func (r *SQLiteBuildStepRepository) SkipDependentSteps(ctx context.Context, buildID int64) (int64, error) {
 	query := `
 		UPDATE build_steps SET status = 'skipped'
-		WHERE build_id = ? AND status = 'waiting'
+		WHERE build_id = ? AND status IN ('waiting', 'ready')
 		  AND EXISTS (
 			  SELECT 1 FROM step_dependencies sd
 			  JOIN build_steps dep ON sd.depends_on_step_id = dep.id

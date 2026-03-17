@@ -660,6 +660,50 @@ func TestBuildStepRepository_SkipDependentSteps(t *testing.T) {
 	}
 }
 
+func TestBuildStepRepository_SkipReadySteps(t *testing.T) {
+	db := setupBuildTestDB(t)
+	defer db.Close()
+
+	project := createTestProject(t, db)
+	buildRepo := NewBuildRepository(db)
+	stepRepo := NewBuildStepRepository(db)
+	ctx := context.Background()
+
+	build := &Build{ProjectID: project.ID, CommitSHA: "abc123", Status: BuildStatusPending}
+	if err := buildRepo.Create(ctx, build); err != nil {
+		t.Fatalf("Create build error = %v", err)
+	}
+
+	image := "golang:1.22"
+	lint := &BuildStep{BuildID: build.ID, Name: "lint", Image: &image, Status: StepStatusFailure}
+	// test is already "ready" (transitioned before lint failed)
+	test := &BuildStep{BuildID: build.ID, Name: "test", Image: &image, Status: StepStatusReady}
+
+	if err := stepRepo.Create(ctx, lint); err != nil {
+		t.Fatalf("Create lint error = %v", err)
+	}
+	if err := stepRepo.Create(ctx, test); err != nil {
+		t.Fatalf("Create test error = %v", err)
+	}
+	if err := stepRepo.AddDependency(ctx, test.ID, lint.ID); err != nil {
+		t.Fatalf("AddDependency error = %v", err)
+	}
+
+	// test is ready but lint failed → should be skipped
+	n, err := stepRepo.SkipDependentSteps(ctx, build.ID)
+	if err != nil {
+		t.Fatalf("SkipDependentSteps() error = %v", err)
+	}
+	if n != 1 {
+		t.Errorf("skipped = %d, want 1", n)
+	}
+
+	got, _ := stepRepo.GetByID(ctx, test.ID)
+	if got.Status != StepStatusSkipped {
+		t.Errorf("test.Status = %q, want %q", got.Status, StepStatusSkipped)
+	}
+}
+
 func TestBuildStepRepository_SkipCascade(t *testing.T) {
 	db := setupBuildTestDB(t)
 	defer db.Close()

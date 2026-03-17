@@ -12,6 +12,7 @@ import (
 
 	"github.com/featherci/featherci/internal/executor"
 	"github.com/featherci/featherci/internal/middleware"
+	"github.com/featherci/featherci/internal/graph"
 	"github.com/featherci/featherci/internal/models"
 	"github.com/featherci/featherci/internal/templates"
 )
@@ -210,6 +211,7 @@ func (h *BuildHandler) Show(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	graph.SortByVisualOrder(steps)
 	build.Steps = steps
 
 	data := BuildShowPageData{
@@ -264,6 +266,7 @@ func (h *BuildHandler) StepsFragment(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+	graph.SortByVisualOrder(steps)
 	build.Steps = steps
 
 	data := BuildShowPageData{

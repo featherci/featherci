@@ -276,6 +276,52 @@ func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
 	}
 }
 
+func TestSortByVisualOrder(t *testing.T) {
+	// Simulates the user's scenario: simple and build-docker are parallel first steps,
+	// scan-docker depends on build-docker, flipper depends on simple.
+	steps := []*models.BuildStep{
+		makeStep("simple"),
+		makeStep("build-docker"),
+		makeStep("scan-docker", "build-docker"),
+		makeStep("flipper", "simple"),
+	}
+	SortByVisualOrder(steps)
+
+	// Column 0 steps should come before column 1 steps.
+	// build-docker (dependents: scan-docker) and simple (dependents: flipper)
+	// are in separate groups; both should precede their dependents.
+	names := make([]string, len(steps))
+	for i, s := range steps {
+		names[i] = s.Name
+	}
+
+	// Verify column ordering: col0 steps before col1 steps
+	col0 := map[string]bool{"simple": true, "build-docker": true}
+	col1 := map[string]bool{"scan-docker": true, "flipper": true}
+	seenCol1 := false
+	for _, n := range names {
+		if col1[n] {
+			seenCol1 = true
+		}
+		if col0[n] && seenCol1 {
+			t.Errorf("column 0 step %q appeared after column 1 step in order: %v", n, names)
+		}
+	}
+}
+
+func TestSortByVisualOrder_NoDeps(t *testing.T) {
+	// No deps → no reordering
+	steps := []*models.BuildStep{
+		makeStep("c"),
+		makeStep("a"),
+		makeStep("b"),
+	}
+	SortByVisualOrder(steps)
+	if steps[0].Name != "c" || steps[1].Name != "a" || steps[2].Name != "b" {
+		t.Errorf("expected original order preserved, got %s %s %s", steps[0].Name, steps[1].Name, steps[2].Name)
+	}
+}
+
 func TestEdgePath_Straight(t *testing.T) {
 	e := Edge{FromX: 100, FromY: 50, ToX: 200, ToY: 50}
 	path := EdgePath(e)

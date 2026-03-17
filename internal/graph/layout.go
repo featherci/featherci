@@ -373,6 +373,75 @@ func assignColumn(name string, byName map[string]*models.BuildStep, columns map[
 	return col
 }
 
+// SortByVisualOrder reorders steps to match the graph's visual layout:
+// left-to-right by column, top-to-bottom within each column (matching group order).
+// Steps without any dependency structure are left in their original order.
+func SortByVisualOrder(steps []*models.BuildStep) {
+	if len(steps) <= 1 {
+		return
+	}
+
+	hasDeps := false
+	for _, s := range steps {
+		if len(s.DependsOn) > 0 {
+			hasDeps = true
+			break
+		}
+	}
+	if !hasDeps {
+		return
+	}
+
+	// Assign columns (same logic as Calculate)
+	byName := make(map[string]*models.BuildStep, len(steps))
+	for _, s := range steps {
+		byName[s.Name] = s
+	}
+	columns := make(map[string]int, len(steps))
+	for _, s := range steps {
+		assignColumn(s.Name, byName, columns)
+	}
+
+	// Build reverse deps (same logic as Calculate)
+	reverseDeps := make(map[string][]string)
+	for _, s := range steps {
+		for _, dep := range s.DependsOn {
+			reverseDeps[dep] = append(reverseDeps[dep], s.Name)
+		}
+	}
+	for k := range reverseDeps {
+		sort.Strings(reverseDeps[k])
+	}
+
+	// Build group key per step (same as Calculate)
+	type sgKey struct {
+		col       int
+		depKey    string
+		revDepKey string
+	}
+	stepGroupKey := make(map[string]sgKey, len(steps))
+	for _, s := range steps {
+		col := columns[s.Name]
+		stepGroupKey[s.Name] = sgKey{col, depSetKey(s), revDepSetKey(s.Name, reverseDeps)}
+	}
+
+	// Sort: by column, then by (depKey, revDepKey) to keep group members adjacent,
+	// then alphabetically within a group.
+	sort.SliceStable(steps, func(i, j int) bool {
+		ki, kj := stepGroupKey[steps[i].Name], stepGroupKey[steps[j].Name]
+		if ki.col != kj.col {
+			return ki.col < kj.col
+		}
+		if ki.depKey != kj.depKey {
+			return ki.depKey < kj.depKey
+		}
+		if ki.revDepKey != kj.revDepKey {
+			return ki.revDepKey < kj.revDepKey
+		}
+		return steps[i].Name < steps[j].Name
+	})
+}
+
 // EdgePath returns an SVG path string for an edge.
 func EdgePath(e Edge) string {
 	if e.FromY == e.ToY {

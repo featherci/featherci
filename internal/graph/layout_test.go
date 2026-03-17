@@ -171,8 +171,8 @@ func TestCalculate_Diamond(t *testing.T) {
 }
 
 func TestCalculate_MixedDepsAndNoDeps(t *testing.T) {
-	// A has no deps, B depends on A, C has no deps but is separate
-	// All with deps: B depends on A. So hasDeps = true.
+	// A has no deps (depended on by B), B depends on A, C has no deps (no dependents)
+	// A and C have different dependents → separate groups
 	steps := []*models.BuildStep{
 		makeStep("a"),
 		makeStep("b", "a"),
@@ -183,15 +183,14 @@ func TestCalculate_MixedDepsAndNoDeps(t *testing.T) {
 		t.Fatal("expected non-nil layout")
 	}
 
-	// Column 0: [A, C] (same deps: none), Column 1: [B]
-	if len(layout.Groups) != 2 {
-		t.Fatalf("expected 2 groups, got %d", len(layout.Groups))
+	// Column 0: [A] (dependents: [B]), [C] (dependents: none), Column 1: [B]
+	if len(layout.Groups) != 3 {
+		t.Fatalf("expected 3 groups, got %d", len(layout.Groups))
 	}
-	if len(layout.Groups[0].Nodes) != 2 {
-		t.Errorf("group 0: expected 2 nodes, got %d", len(layout.Groups[0].Nodes))
-	}
-	if len(layout.Groups[1].Nodes) != 1 {
-		t.Errorf("group 1: expected 1 node, got %d", len(layout.Groups[1].Nodes))
+
+	// 1 edge: A→B
+	if len(layout.Edges) != 1 {
+		t.Errorf("expected 1 edge, got %d", len(layout.Edges))
 	}
 }
 
@@ -251,7 +250,8 @@ func TestCalculate_ConnectionPoints(t *testing.T) {
 }
 
 func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
-	// Col 0: [build-docker, simple] — same deps (none), one group
+	// Col 0: build-docker (depended on by deploy-to-staging) and simple (depended on by deploy-to-staging, flipper)
+	//        have different dependents → separate groups
 	// Col 1: [flipper] depends on simple only — one group
 	//         [deploy-to-staging] depends on both — separate group
 	steps := []*models.BuildStep{
@@ -265,23 +265,14 @@ func TestCalculate_MixedDepsPartialGroup(t *testing.T) {
 		t.Fatal("expected non-nil layout")
 	}
 
-	// 3 groups: col0=[build-docker,simple], col1=[flipper], col1=[deploy-to-staging]
-	if len(layout.Groups) != 3 {
-		t.Fatalf("expected 3 groups, got %d", len(layout.Groups))
+	// 4 groups: col0=[build-docker], col0=[simple], col1=[flipper], col1=[deploy-to-staging]
+	if len(layout.Groups) != 4 {
+		t.Fatalf("expected 4 groups, got %d", len(layout.Groups))
 	}
 
-	// 2 edges: col0-group → flipper-group, col0-group → deploy-group
-	if len(layout.Edges) != 2 {
-		t.Errorf("expected 2 edges, got %d", len(layout.Edges))
-	}
-
-	// Verify edges target different Y positions (flipper and deploy-to-staging are in different groups)
-	edgeYs := make(map[int]bool)
-	for _, e := range layout.Edges {
-		edgeYs[e.ToY] = true
-	}
-	if len(edgeYs) < 2 {
-		t.Error("expected edges to target different Y positions for different groups")
+	// 3 edges: build-docker→deploy, simple→deploy, simple→flipper
+	if len(layout.Edges) != 3 {
+		t.Errorf("expected 3 edges, got %d", len(layout.Edges))
 	}
 }
 

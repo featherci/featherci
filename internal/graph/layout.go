@@ -98,18 +98,30 @@ func Calculate(steps []*models.BuildStep) *Layout {
 		assignColumn(s.Name, byName, columns)
 	}
 
-	// Sub-group steps by (column, sorted dependency set).
-	// Steps with identical deps share a visual box.
+	// Build reverse dependency map: step name → sorted names of steps that depend on it
+	reverseDeps := make(map[string][]string)
+	for _, s := range steps {
+		for _, dep := range s.DependsOn {
+			reverseDeps[dep] = append(reverseDeps[dep], s.Name)
+		}
+	}
+	for k := range reverseDeps {
+		sort.Strings(reverseDeps[k])
+	}
+
+	// Sub-group steps by (column, sorted dependency set, sorted reverse dependency set).
+	// Steps with identical deps AND identical dependents share a visual box.
 	type sgKey struct {
-		col    int
-		depKey string
+		col       int
+		depKey    string
+		revDepKey string
 	}
 
 	maxCol := 0
 	sgSteps := make(map[sgKey][]*models.BuildStep)
 	for _, s := range steps {
 		col := columns[s.Name]
-		key := sgKey{col, depSetKey(s)}
+		key := sgKey{col, depSetKey(s), revDepSetKey(s.Name, reverseDeps)}
 		sgSteps[key] = append(sgSteps[key], s)
 		if col > maxCol {
 			maxCol = col
@@ -123,10 +135,15 @@ func Calculate(steps []*models.BuildStep) *Layout {
 		sort.Slice(ss, func(i, j int) bool { return ss[i].Name < ss[j].Name })
 		colKeys[key.col] = append(colKeys[key.col], key)
 	}
-	// Stable initial sort of sub-group keys by depKey
+	// Stable initial sort of sub-group keys by depKey, then revDepKey
 	for col := range colKeys {
 		keys := colKeys[col]
-		sort.Slice(keys, func(i, j int) bool { return keys[i].depKey < keys[j].depKey })
+		sort.Slice(keys, func(i, j int) bool {
+			if keys[i].depKey != keys[j].depKey {
+				return keys[i].depKey < keys[j].depKey
+			}
+			return keys[i].revDepKey < keys[j].revDepKey
+		})
 	}
 
 	// Build Group objects (without X/Y positions yet)
@@ -292,6 +309,15 @@ func depSetKey(s *models.BuildStep) string {
 	return strings.Join(sorted, "\x00")
 }
 
+// revDepSetKey returns a canonical string key for the steps that depend on the given step.
+func revDepSetKey(name string, reverseDeps map[string][]string) string {
+	deps := reverseDeps[name]
+	if len(deps) == 0 {
+		return ""
+	}
+	return strings.Join(deps, "\x00")
+}
+
 // avgSourceY computes the average center Y of source groups for a dependency set key.
 func avgSourceY(dk string, nameToGroupIdx map[string]int, allGroups []groupEntry) float64 {
 	if dk == "" {
@@ -382,10 +408,10 @@ func formatStepDuration(s *models.BuildStep) string {
 	}
 
 	if d < time.Second {
-		return fmt.Sprintf("%dms", d.Milliseconds())
+		return "<1s"
 	}
 	if d < time.Minute {
-		return fmt.Sprintf("%.1fs", d.Seconds())
+		return fmt.Sprintf("%ds", int(d.Seconds()))
 	}
 	if d < time.Hour {
 		mins := int(d.Minutes())

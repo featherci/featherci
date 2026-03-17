@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/docker/docker/api/types/container"
@@ -34,16 +36,22 @@ type dockerClient interface {
 // DockerExecutor runs build steps inside Docker containers.
 type DockerExecutor struct {
 	client dockerClient
+	paths  *pathMapper // translates container paths to host paths for DinD
 }
 
 // NewDockerExecutor creates an executor using the Docker client from environment
 // configuration (DOCKER_HOST, etc.).
+// It auto-detects whether FeatherCI is running inside Docker and sets up
+// bind mount path translation for the sibling container pattern.
 func NewDockerExecutor() (*DockerExecutor, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		return nil, fmt.Errorf("creating docker client: %w", err)
 	}
-	return &DockerExecutor{client: cli}, nil
+	return &DockerExecutor{
+		client: cli,
+		paths:  detectPathMapper(cli),
+	}, nil
 }
 
 // Run executes commands inside a new container and waits for completion.
@@ -76,7 +84,7 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 	}
 
 	hostConfig := &container.HostConfig{
-		Binds: formatBindMounts(opts.BindMounts),
+		Binds: d.resolveBindMounts(opts.BindMounts),
 	}
 	if opts.Memory > 0 {
 		hostConfig.Resources.Memory = opts.Memory
@@ -116,9 +124,13 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 	}
 
 	// Stream container output to the provided writer.
+	// Use context.Background() so the log stream isn't interrupted if the
+	// caller's context is cancelled — the WaitGroup controls the goroutine
+	// lifecycle, and Docker closes the stream on container exit.
 	var logWg sync.WaitGroup
+	var logBytes int64
 	if opts.Output != nil {
-		logReader, err := d.client.ContainerLogs(ctx, containerID, container.LogsOptions{
+		logReader, err := d.client.ContainerLogs(context.Background(), containerID, container.LogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
 			Follow:     true,
@@ -129,8 +141,11 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 				defer logWg.Done()
 				defer logReader.Close()
 				// StdCopy demuxes Docker's multiplexed stdout/stderr stream.
-				_, _ = stdcopy.StdCopy(opts.Output, opts.Output, logReader)
+				n, _ := stdcopy.StdCopy(opts.Output, opts.Output, logReader)
+				atomic.StoreInt64(&logBytes, n)
 			}()
+		} else {
+			slog.Warn("failed to attach container logs", "container", containerID, "error", err)
 		}
 	}
 
@@ -156,13 +171,26 @@ func (d *DockerExecutor) Run(ctx context.Context, opts RunOptions) (*RunResult, 
 			result.OOMKilled = true
 		}
 		logWg.Wait()
+
+		// Fallback: if streaming captured nothing, fetch logs in batch.
+		// This handles edge cases where Follow-mode misses output on
+		// fast-exiting containers.
+		if opts.Output != nil && atomic.LoadInt64(&logBytes) == 0 {
+			d.fetchLogsSync(containerID, opts.Output)
+		}
+
 		return result, nil
 
 	case err := <-errCh:
 		// Timeout or other wait error — stop the container.
+		logWg.Wait()
 		stopCtx, stopCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer stopCancel()
 		_ = d.client.ContainerStop(stopCtx, containerID, container.StopOptions{})
+
+		if opts.Output != nil {
+			d.fetchLogsSync(containerID, opts.Output)
+		}
 
 		if waitCtx.Err() == context.DeadlineExceeded {
 			return &RunResult{
@@ -251,6 +279,40 @@ func (d *DockerExecutor) cleanupServices(networkID string, containerIDs []string
 	if networkID != "" {
 		_ = d.client.NetworkRemove(ctx, networkID)
 	}
+}
+
+// resolveBindMounts translates bind mount source paths through the path mapper
+// (for Docker-in-Docker) and formats them as Docker bind strings.
+func (d *DockerExecutor) resolveBindMounts(mounts []BindMount) []string {
+	if d.paths == nil {
+		return formatBindMounts(mounts)
+	}
+	resolved := make([]BindMount, len(mounts))
+	for i, m := range mounts {
+		resolved[i] = BindMount{
+			Source:   d.paths.Map(m.Source),
+			Target:   m.Target,
+			ReadOnly: m.ReadOnly,
+		}
+	}
+	return formatBindMounts(resolved)
+}
+
+// fetchLogsSync fetches all container logs without Follow (batch mode).
+// Used as a fallback when streaming didn't capture any output.
+func (d *DockerExecutor) fetchLogsSync(containerID string, output io.Writer) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	logReader, err := d.client.ContainerLogs(ctx, containerID, container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+	})
+	if err != nil {
+		slog.Warn("fallback log fetch failed", "container", containerID, "error", err)
+		return
+	}
+	defer logReader.Close()
+	_, _ = stdcopy.StdCopy(output, output, logReader)
 }
 
 // Stop gracefully stops a running container with a 10-second grace period.

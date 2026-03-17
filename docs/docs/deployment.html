@@ -123,6 +123,12 @@
 
         <p>Build containers run alongside FeatherCI on the host's Docker daemon, not nested inside it. This is simpler and more performant than Docker-in-Docker (dind).</p>
 
+        <h4>Automatic Path Translation</h4>
+
+        <p>When FeatherCI runs in Docker, workspace directories are inside the FeatherCI container but build step containers need <em>host</em> paths for bind mounts. FeatherCI auto-detects this by inspecting its own container mounts and translates paths automatically &mdash; no configuration required.</p>
+
+        <p>For this to work, the FeatherCI container name must match its hostname (Docker's default). If you override the hostname with <code>--hostname</code>, path translation will not work.</p>
+
         <h4>Permissions</h4>
 
         <p>The FeatherCI process must have permission to access the Docker socket:</p>

@@ -942,3 +942,54 @@ func TestSanitizeName(t *testing.T) {
 		}
 	}
 }
+
+func TestReduceTransitiveDeps(t *testing.T) {
+	// A → (no deps)
+	// B → A
+	// C → A, B  (A is redundant since B→A)
+	// D → A, C  (A is redundant since C→B→A)
+	wf := &workflow.Workflow{
+		Steps: []workflow.Step{
+			{Name: "A"},
+			{Name: "B", DependsOn: []string{"A"}},
+			{Name: "C", DependsOn: []string{"A", "B"}},
+			{Name: "D", DependsOn: []string{"A", "C"}},
+		},
+	}
+
+	reduceTransitiveDeps(wf)
+
+	// B should keep A (only dep)
+	if len(wf.Steps[1].DependsOn) != 1 || wf.Steps[1].DependsOn[0] != "A" {
+		t.Errorf("B deps: got %v, want [A]", wf.Steps[1].DependsOn)
+	}
+	// C should only keep B (A is transitive via B)
+	if len(wf.Steps[2].DependsOn) != 1 || wf.Steps[2].DependsOn[0] != "B" {
+		t.Errorf("C deps: got %v, want [B]", wf.Steps[2].DependsOn)
+	}
+	// D should only keep C (A is transitive via C→B→A)
+	if len(wf.Steps[3].DependsOn) != 1 || wf.Steps[3].DependsOn[0] != "C" {
+		t.Errorf("D deps: got %v, want [C]", wf.Steps[3].DependsOn)
+	}
+}
+
+func TestReduceTransitiveDeps_Diamond(t *testing.T) {
+	// Diamond: A → (no deps), B → A, C → A, D → B, C
+	// D's deps B and C are independent (neither is reachable from the other)
+	// so both should be kept
+	wf := &workflow.Workflow{
+		Steps: []workflow.Step{
+			{Name: "A"},
+			{Name: "B", DependsOn: []string{"A"}},
+			{Name: "C", DependsOn: []string{"A"}},
+			{Name: "D", DependsOn: []string{"A", "B", "C"}},
+		},
+	}
+
+	reduceTransitiveDeps(wf)
+
+	// D should keep B and C but drop A (reachable via both B and C)
+	if len(wf.Steps[3].DependsOn) != 2 {
+		t.Errorf("D deps: got %v, want [B, C]", wf.Steps[3].DependsOn)
+	}
+}

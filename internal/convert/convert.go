@@ -89,6 +89,9 @@ func Run(dir string) error {
 	// Replace CI-platform env vars with FeatherCI equivalents in all commands
 	replaceSourceEnvVars(result)
 
+	// Remove redundant dependency edges that are already satisfied transitively
+	reduceTransitiveDeps(result.Workflow)
+
 	printWarnings(result.Warnings)
 
 	// Write the converted workflow
@@ -356,6 +359,53 @@ func replaceSourceEnvVars(r *Result) {
 		for j, cmd := range step.Commands {
 			r.Workflow.Steps[i].Commands[j] = replacer.Replace(cmd)
 		}
+	}
+}
+
+// reduceTransitiveDeps removes dependency edges that are already satisfied
+// transitively through other dependencies. For example, if step C depends on
+// [A, B] and B already depends on A, the direct edge C→A is redundant.
+func reduceTransitiveDeps(wf *workflow.Workflow) {
+	// Build a map of step name → direct dependencies
+	depMap := make(map[string][]string)
+	for _, s := range wf.Steps {
+		depMap[s.Name] = s.DependsOn
+	}
+
+	// reachable returns all transitive dependencies of a step (excluding itself)
+	var reachable func(name string, visited map[string]bool)
+	reachable = func(name string, visited map[string]bool) {
+		for _, dep := range depMap[name] {
+			if !visited[dep] {
+				visited[dep] = true
+				reachable(dep, visited)
+			}
+		}
+	}
+
+	for i, s := range wf.Steps {
+		if len(s.DependsOn) <= 1 {
+			continue
+		}
+
+		// For each direct dependency, compute what's reachable through the OTHER deps
+		reachableViaOthers := make(map[string]bool)
+		for _, dep := range s.DependsOn {
+			visited := make(map[string]bool)
+			reachable(dep, visited)
+			for k := range visited {
+				reachableViaOthers[k] = true
+			}
+		}
+
+		// Keep only deps that aren't transitively reachable through another dep
+		var reduced []string
+		for _, dep := range s.DependsOn {
+			if !reachableViaOthers[dep] {
+				reduced = append(reduced, dep)
+			}
+		}
+		wf.Steps[i].DependsOn = reduced
 	}
 }
 

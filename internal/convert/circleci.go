@@ -194,6 +194,7 @@ var knownOrbCommands = map[string][]string{
 	"node/install": {
 		"# Install Node.js (equivalent of circleci/node orb install)",
 		`curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs`,
+		`mkdir -p ~/.npm-global && npm config set prefix ~/.npm-global && export PATH=~/.npm-global/bin:$PATH`,
 	},
 	"node/install-packages": {
 		"npm install",
@@ -209,6 +210,7 @@ var knownOrbCommands = map[string][]string{
 // knownOrbYarnVariants handles orb commands with pkg-manager: yarn.
 var knownOrbYarnVariants = map[string][]string{
 	"node/install-packages": {
+		"npm install -g yarn",
 		"yarn install",
 	},
 }

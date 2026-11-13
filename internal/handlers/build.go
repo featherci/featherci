@@ -367,6 +367,10 @@ func (h *BuildHandler) Cancel(w http.ResponseWriter, r *http.Request) {
 const defaultLogLimit = 500
 
 // StepLogResponse is the JSON response for the step log endpoint.
+//
+// Lines are returned in pages of at most defaultLogLimit. Done is true only
+// when the step has finished AND this response reaches the end of the log,
+// so clients must keep requesting offset+len(Lines) until Done is true.
 type StepLogResponse struct {
 	Lines  []string `json:"lines"`
 	Offset int      `json:"offset"`
@@ -441,7 +445,6 @@ func (h *BuildHandler) StepLog(w http.ResponseWriter, r *http.Request) {
 		Lines:  []string{},
 		Offset: offset,
 		Total:  0,
-		Done:   step.IsTerminal(),
 	}
 
 	// Read log lines if path exists.
@@ -460,6 +463,11 @@ func (h *BuildHandler) StepLog(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+
+	// A finished step is only "done" once the client has every line. Otherwise
+	// a finished step with more than defaultLogLimit lines would report done on
+	// the first page and the remaining lines would never be requested.
+	resp.Done = step.IsTerminal() && offset+len(resp.Lines) >= resp.Total
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(resp)
